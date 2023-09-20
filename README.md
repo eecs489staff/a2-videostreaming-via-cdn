@@ -68,7 +68,7 @@ After completing this programming assignment, students should be able to:
 <a name="environment"></a>
 
 ## Environment Setup
-You will use [our provided VM](https://www.dropbox.com/s/ajvta4j2t0bu42i/EECS489VM-1804-A2A3.ova?dl=0) for the assignment. This VM has all the components you need to get started on the assignment. While we tried to make the base VM work for all the projects, unfortunately this didn't come to fruition. Starting fresh also ensures a working environment free from accidental changes that may have been made in the first project.
+You will use [our provided VM](https://drive.google.com/file/d/1n67hWzSzCHomQMFwOOvIBpji9D0DHGiy/view?usp=sharing) for the assignment. This VM has all the components you need to get started on the assignment. While we tried to make the base VM work for all the projects, unfortunately this didn't come to fruition. Starting fresh also ensures a working environment free from accidental changes that may have been made in the first project.
 
 **We encourage you to use VMware instead of Virtual Box for this and ALL following projects, which is more compatible with different OS and is free with personal license.** For Windows and Linux users, we recommend [VMware Workstation Player](https://www.vmware.com/products/workstation-player/workstation-player-evaluation.html). For Mac users, we recommend [VMware Fusion Player](https://customerconnect.vmware.com/web/vmware/evalcenter?p=fusion-player-personal).
 
