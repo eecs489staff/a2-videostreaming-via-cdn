@@ -3,9 +3,9 @@ import sys
 import os
 
 if len(sys.argv) != 2:
-	print 'Error: Usage is python launch_firefox.py <profile_num>'
+	print('Error: Usage is python launch_firefox.py <profile_num>')
 	exit(1)
 
 profileNum = sys.argv[1]
 devNull = open(os.devnull, 'w')
-subprocess.call(["sudo", "-u", "eecs489vm", "firefox", "-P", "eecs489profile" + profileNum], stdout=devNull, stderr=devNull)
+subprocess.call(["sudo", "-u", "eecs489", "firefox", "-P", "eecs489profile" + profileNum], stdout=devNull, stderr=devNull)
