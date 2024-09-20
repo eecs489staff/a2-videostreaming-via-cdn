@@ -1,7 +1,7 @@
 # Assignment 2: Video Streaming via CDN
-# Project Specs changing substantially. Please do not start yet!!!
 
-### Due: October 13th, 2023 at 11:59 PM
+
+### Due: October 11th, 2024 at 11:59 PM
 
 ## Table of contents
 * [Overview](#overview)
@@ -69,20 +69,20 @@ After completing this programming assignment, students should be able to:
 <a name="environment"></a>
 
 ## Environment Setup
-You will use AWS academy as your development environment. Please make sure you create an instance based on the shared AMI `EECS489-p2` and select t2-large for instance type.
+You will use AWS academy's Learing lab similar to project 1 as your development environment. Please make sure you create an instance based on the shared AMI `EECS489p2` and select t2-large for instance type. Please refer to the [setup instructions](#instruction-sheet-using-the-aws-ami-for-mininet-with-vnc-and-starter-files)  to test your code once you have part of the implemetion completed.
 
 To start the webserver, simply run the python script we provide by doing the following:
 
-`h(n) sudo python3 start_server.py`
+```bash
+   h(n) sudo python3 webserver.py
+```
 
 Here `h(n)` is the host on mininet on which you are running the webserver. 
 
 
 Like any HTTP web server (not HTTPS) these instances of the server will be reachable on TCP port `80`. For simplicity, all of our web traffic for this assignment will be unencrypted and be done over HTTP.
 
-For this project, we will be using an off the shelf browser (Firefox). To launch Firefox for this project, run the following command:
-
-`TODO: Update this command - python launch_firefox.py <profile_num>`
+For this project, we will be using an off the shelf browser (Chrome). To launch Chrome for this project, follow the steps outlined in [steps](#instruction-sheet-using-the-aws-ami-for-mininet-with-vnc-and-starter-files) - Note that you will need this setup once you are ready to test your miproxy code inside mininet.
 
 
 We're leaving it up to you to write your own Mininet topology script for testing the package as a whole. A simple Starfish topology (all hosts connected to one switch in the middle) should suffice for testing. 
@@ -112,11 +112,13 @@ We will cover the basic usage of `select()` in the discussion.
 
 Your proxy measure the the throughput between the server and itself to determine the bitrate. Your proxy should estimate each stream's throughput once per chunk. Make sure to note the start time of each chunk when your proxy started receiving the chunk from the server, and save another timestamp when you have finished receiving the chunk from the server. Given the size of the chunk, you can now compute the throughput by dividing chunk size by the time window.
 
+
 Each video is a sequence of chunks. To smooth your throughput estimation, you should use an exponentially-weighted moving average (EWMA). Every time you make a new measurement (as outlined above), update your current throughput estimate as follows:
 
 `T_cur = alpha * T_new + (1 - alpha) * T_cur`
 
-The constant `0 ≤ alpha ≤ 1` controls the tradeoff between a smooth throughput estimate (`alpha` closer to 0) and one that reacts quickly to changes (`alpha` closer to 1). You will control `alpha` via a command line argument. When a new stream starts, set `T_cur` to the *lowest* available bitrate for that video.
+The constant `0 ≤ alpha ≤ 1` controls the tradeoff between a smooth throughput estimate (`alpha` closer to 0) and one that reacts quickly to changes (`alpha` closer to 1). You will control `alpha` via a command line argument. **_When a new stream starts, set `T_cur` to the *lowest* available bitrate for that video_**.
+
 
 ### Choosing a Bitrate
 
@@ -128,7 +130,7 @@ Your proxy will replace each chunk request with a request for the same chunk at 
 
 `/path/to/video/vid-<bitrate>-seg-<num>.m4s`
 
-For example, suppose the player requests chunk 2 of the video `tears_of_steel.mp4` at 500 Kbps:
+For example, suppose the player requests chunk 2 of the video `tears-of-steel.mp4` at 500 Kbps:
 
 `/path/to/video/vid-500-seg-2.m4s`
 
@@ -136,7 +138,7 @@ To switch to a higher bitrate, e.g., 1000 Kbps, the proxy should modify the URI 
 
 `/path/to/video/vid-1000-seg-2`
 
-> **IMPORTANT:** When the video player requests `tears_of_steel.mpd`, you should instead return `tears_of_steel.mp4_no_list.mpd` to the video player. This file does not list the available bitrates, preventing the video player from attempting its own bitrate adaptation. Your proxy should, however, fetch `tears_of_steel.mp4` for itself (i.e., don’t return it to the client) so you can parse the list of available encodings as described above. Your proxy should keep this list of available bitrates in a global container (not on a connection by connection basis).
+> **IMPORTANT:** When the video player requests `tears-of-steel.mpd`, you should instead return `tears-of-steel-no-list.mpd` to the video player. This file does not list the available bitrates, preventing the video player from attempting its own bitrate adaptation. Your proxy should, however, fetch `tears_-of-steel.mpd` for itself (i.e., don’t return it to the client) so you can parse the list of available encodings as described above. Your proxy should keep this list of available bitrates in a global container (not on a connection by connection basis).
 
 ### Running `miProxy`
 To operate `miProxy`, it should be invoked in one of two ways
@@ -325,7 +327,172 @@ To submit:
 
 <a name="autograder"></a>
 ## Autograder
-The autograder will be released roughly halfway through the assignment. You are encouraged to design tests by yourselves to fully test your proxy server and DNS server. You should *NEVER* rely on the autograder to debug your code. Clarifications on the autograder will be added in this section:
+The autograder will be released roughly halfway through the assignment. You are encouraged to design tests by yourselves to fully test your proxy server and DNS server. You should *NEVER* rely on the autograder to debug your code. Clarifications on the autograder will be added in this section.
+
+### Instruction Sheet: Using the AWS AMI for Mininet with VNC and Starter Files
+
+This instruction sheet will guide you through the setup and use of the AWS AMI provided for your Mininet project. You will learn how to access the virtual machine using a VNC client, understand what VNC is, and work with the starter files provided. Follow each step carefully to ensure everything runs smoothly.
+
+---
+
+#### What is VNC?
+
+VNC (Virtual Network Computing) is a system that allows you to remotely control another computer’s desktop environment over a network. It transmits keyboard and mouse input from your local machine to a remote machine and displays the screen of the remote machine on your local machine. In this project, you will use VNC to access the graphical interface of your AWS AMI instance, so you can work with the provided tools, including Mininet.
+
+---
+
+### Step 1: Launch the AWS AMI Instance
+Once you’ve launched the AWS AMI instance from your console, you will need to access its desktop environment using a VNC client.
+
+---
+
+### Step 2: Launching the VNC Server
+
+1. **Connect to Your AWS Instance:**
+   First, SSH into your AWS instance. Open a terminal on your local machine and use the following SSH command to log in:
+
+   ```bash
+   ssh -i /path/to/your-key.pem username@your-aws-instance-public-ip
+   ```
+
+   - **`ssh`**: This command initiates a Secure Shell session.
+   - **`-i /path/to/your-key.pem`**: The `-i` flag specifies the private key to use for authentication.
+   - **`username@your-aws-instance-public-ip`**: Replace `username` with the username provided for the AMI and `your-aws-instance-public-ip` with the public IP of your AWS instance.
+
+2. **Start the VNC Server:**
+   Once connected to your AWS instance, start the VNC server by running:
+
+   ```bash
+   vncserver
+   ```
+
+   **Explanation**: The `vncserver` command launches the VNC server. When you run this command as a non-root user (i.e., without `sudo`), it creates a VNC session that runs on a specific display, typically `:1`, which corresponds to port 5901.
+
+   - The password to the VNC server will be set to **eecs489** by default.
+---
+
+### Step 3: SSH Tunneling for VNC Access
+
+Since VNC uses port 5901 (by default for display `:1`), we will create an SSH tunnel to securely forward traffic from your local machine to this port on the AWS instance.
+
+1. **Create an SSH Tunnel:**
+
+   Run the following command in a new terminal window on your local machine:
+
+   ```bash
+   ssh -i /path/to/your-key.pem -L 5901:localhost:5901 username@your-aws-instance-public-ip
+   ```
+
+   **Explanation**:
+   - **`-L 5901:localhost:5901`**: This forwards port 5901 on your local machine to port 5901 on the AWS instance (where the VNC server is running).
+   - The `username` and `your-aws-instance-public-ip` should match what you used in Step 2.
+
+   **Expected Output**: After running the SSH tunnel command, you should see no errors and be connected to your AWS instance. It will appear similar to a regular SSH session.
+
+---
+
+### Step 4: Accessing the VNC Server Using a VNC Client
+
+1. **Open Your VNC Client**:
+   Install and launch a VNC client such as **RealVNC** or **TigerVNC**. 
+
+2. **Connect to Your AWS Instance**:
+   In the VNC client, connect to `localhost:5901`.
+
+   - **`localhost`**: Refers to your local machine.
+   - **`:5901`**: Refers to the port where VNC traffic is being forwarded via the SSH tunnel.
+
+3. **Enter Your VNC Password**:
+   When prompted, enter the password you set when starting the VNC server.
+
+---
+
+### Step 5: Working with the Starter Files
+
+Once connected via VNC, you will find several starter files, including `chrome` and `webserver.py`. Below is an explanation of each file and how to work with them.
+
+#### 1. Making `chrome` Executable
+
+The `chrome` file is an executable that needs to be made runnable before it can be used. Follow these steps:
+
+1. **Run `chmod +x` to Make `chrome` Executable:**
+
+   ```bash
+   chmod +x chrome
+   ```
+
+   **Explanation**:
+   - **`chmod +x chrome`**: The `chmod` command changes the permissions of the file. The `+x` flag makes the file executable, meaning it can be run as a program.
+   - Once this is done, you’ll be able to run `chrome` using `sudo` as shown in the next step.
+
+2. **Run `chrome` as `sudo`:**
+
+   ```bash
+   sudo ./chrome
+   ```
+
+   **Explanation**:
+   - **`sudo`**: This command runs the `chrome` executable with superuser (admin) privileges. Some programs may need elevated permissions to function correctly.
+   - **`./chrome`**: The `./` specifies that the program is located in the current directory.
+
+---
+
+#### 2. Running the `webserver.py`
+
+Another file in your starter pack is `webserver.py`, a Python script that launches a web server using the Flask framework. This server serves files over a persistent connection.
+
+1. **Getting content files for the Web Server:**
+
+Get the files for the web content from github using the following commands:
+
+``` wget https://github.com/eecs489staff/a2-videostreaming-via-cdn/raw/refs/heads/main/web/vod.tar ```
+``` tar -xvf vod.tar ```
+
+This will create a folder called ```vod``` that has all the content you need.
+
+2. **Run the Web Server:**
+
+   ```bash
+   python3 webserver.py
+   ```
+
+   **Explanation**:
+   - **`python3`**: This invokes Python version 3.
+   - **`webserver.py`**: The file that contains the Flask server code.
+   - Once the server is running, it will listen on port 80 and serve files over HTTP.
+
+   You can access the web server by navigating to `http://localhost` in a web browser on your local machine.
+
+---
+
+### Step 6: Summary of Commands
+
+- **SSH into AWS**: 
+  ```bash
+  ssh -i /path/to/your-key.pem username@your-aws-instance-public-ip
+  ```
+- **Start VNC Server**: 
+  ```bash
+  vncserver
+  ```
+- **Create SSH Tunnel**: 
+  ```bash
+  ssh -i /path/to/your-key.pem -L 5901:localhost:5901 username@your-aws-instance-public-ip
+  ```
+- **Make `chrome` Executable**:
+  ```bash
+  chmod +x chrome
+  ```
+- **Run `chrome` as `sudo`**: 
+  ```bash
+  sudo ./chrome
+  ```
+- **Run `webserver.py`**:
+  ```bash
+  python3 webserver.py
+  ```
+
+---
 
 ## Acknowledgements
 This programming assignment is based on Peter Steenkiste's Project 3 from CMU CS 15-441: Computer Networks.
