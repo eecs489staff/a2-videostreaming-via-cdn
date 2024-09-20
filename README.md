@@ -69,9 +69,17 @@ After completing this programming assignment, students should be able to:
 <a name="environment"></a>
 
 ## Environment Setup
-You will use AWS academy's Learing lab similar to project 1 as your development environment. Please make sure you create an instance based on the shared AMI `EECS489p2` and select t2-large for instance type. Please refer to the [setup instructions](#instruction-sheet-using-the-aws-ami-for-mininet-with-vnc-and-starter-files)  to test your code once you have part of the implemetion completed.
+You will use AWS academy's Learing lab similar to project 1 as your development environment. Please make sure you create an instance based on the shared AMI `EECS489p2` and select t3-medium for instance type. 
 
-To start the webserver, simply run the python script we provide by doing the following:
+Once you have logged into your instance, you can get the starter files by cloning the assignment github repository:
+
+```bash
+git clone git@github.com:eecs489staff/a2-videostreaming-via-cdn.git
+```
+
+Please refer to the [setup instructions](#instruction-sheet-using-the-aws-ami-for-mininet-with-vnc-and-starter-files)  to test your code once you have part of the implementation completed.
+
+To start the webserver on a host in mininet, simply run the python script we provide using the following command:
 
 ```bash
    h(n) sudo python3 webserver.py
