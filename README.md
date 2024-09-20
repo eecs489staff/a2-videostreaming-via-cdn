@@ -19,15 +19,6 @@ Video traffic dominates the Internet. In this project, you will explore how vide
 
 This project is divided into Part 1 and Part 2. We recommend that you work on them simultaneously (both of them can be independently tested), and finally integrate both parts together.
 
-### Project Setup
-In your project, you will be dealing with **multiple hosts** setup in Mininet. You will be launching different things in different mininet hosts.   
-
-There are 3 main roles in this project: 
-1. CDNs/Web servers(at least 1): At least 1 host should run the start server script and start serving video/html content. These are the "CDN"s in this project. They provide our proxy with video content.
-2. Browser/Client(at least 1): At least 1 host should run the Firefox browser script and launch the browser. This is the client that negotiates with the proxy. 
-3. Proxy(exactly 1): Exactly 1 host should run the proxy. The proxy acts as a load balancer and is the "middleman" between clients and CDNs. It forwards client requests to one of the web servers, and forwards web server responses to the client.
-4. DNS/name server(exactly 1): Exactly 1 host should run the name server. The name server will tell the proxy which web server it should forward client request to when it receives a response from the server.
-In summary, at least 4 hosts should be running in the mininet for fully testing the project!!!. 
 
 <img src="real-CDN.png" title="Video CDN in the wild" alt="" width="350" height="256"/>
 
@@ -49,7 +40,7 @@ You'll write the gray-shaded components (i.e. the DNS Server and Proxy) in the f
 
 **Proxy.** Rather than modify the video player itself, you will implement adaptive bitrate selection in an HTTP proxy. The player requests chunks with standard HTTP GET requests; your proxy will intercept these and modify them to retrieve whichever bitrate your algorithm deems appropriate.
 
-**Web Server.** Video content will be served from an off-the-shelf web server (Apache). As with the proxy, you will run multiple instances of Apache on different IP addresses to simulate a CDN with several content servers.
+**Web Server.** Video content will be served from an off-the-shelf web server. As with the proxy, you will run multiple instances of the web server on different IP addresses to simulate a CDN with several content servers.
 
 **DNS Server.** You will implement a simple DNS that supports only a small portion of actual DNS's functionality. Your server will respond to each request with the “best” server for that particular client.
 
@@ -87,20 +78,36 @@ Once you have logged into your instance, you can get the starter files by clonin
 git clone git@github.com:eecs489staff/a2-videostreaming-via-cdn.git
 ```
 
+This will download the following files and folders:
+
 Please refer to the [setup instructions](#instruction-sheet-using-the-aws-ami-for-mininet-with-vnc-and-starter-files)  to test your code once you have part of the implementation completed.
 
-To start the webserver on a host in mininet, simply run the python script we provide using the following command:
+In your project, you will be dealing with **multiple hosts** setup in Mininet. Differnet components of the project will be executed on separate mininet hosts.   
+
+There are 4 main components in this project: 
+1. CDNs/Web servers(at least 1): At least 1 host should run the start server script and start serving video/html content. These are the "CDN"s in this project. They provide our proxy with video content. To start the webserver on a host in mininet, simply run the python script we provide using the following command:
 
 ```bash
    h(n) sudo python3 webserver.py
 ```
 
-Here `h(n)` is the host on mininet on which you are running the webserver. 
+Here `h(n)` is the host on mininet on which you are running the webserver. The webserver expects the content of the website to be in a folder called ```vod```. This folder should be in the same directory from which you are exeucting the web server. You can get the contents of this folder by executing the following commands.
+
+```
+mv web/vod.tar .
+tar -xvf vod.tar
+```
 
 
 Like any HTTP web server (not HTTPS) these instances of the server will be reachable on TCP port `80`. For simplicity, all of our web traffic for this assignment will be unencrypted and be done over HTTP.
 
-For this project, we will be using an off the shelf browser (Chrome). To launch Chrome for this project, follow the steps outlined in [steps](#instruction-sheet-using-the-aws-ami-for-mininet-with-vnc-and-starter-files) - Note that you will need this setup once you are ready to test your miproxy code inside mininet.
+2. Browser/Client(at least 1): At least 1 host should run the Chrome browser script and launch the browser. This is the client that negotiates with the proxy. Since Chrome uses a Graphical User Interface, please refer to [setup instructions](#instruction-sheet-using-the-aws-ami-for-mininet-with-vnc-and-starter-files) on how to login to your aws instance remotely with a Graphical interface.
+
+3. Proxy(exactly 1): Exactly 1 host should run the proxy. The proxy acts as a load balancer and is the "middleman" between clients and CDNs. It forwards client requests to one of the web servers, and forwards web server responses to the client.
+
+4. DNS/name server(exactly 1): Exactly 1 host should run the name server. The name server will tell the proxy which web server it should forward client request to when it receives a response from the server.
+In summary, at least 4 hosts should be running in the mininet for fully testing the project!!!. 
+
 
 
 We're leaving it up to you to write your own Mininet topology script for testing the package as a whole. A simple Starfish topology (all hosts connected to one switch in the middle) should suffice for testing. 
@@ -112,6 +119,7 @@ We're leaving it up to you to write your own Mininet topology script for testing
 3. Use `netstat -tulpn | grep :80` to see if there's anything running on port 80 
 > **How do I shut down a web server?**
 1. sudo kill -9 <pid of the process using port 80> 
+
 
 <a name="part1"></a>
 ## Part 1: Bitrate Adaptation in HTTP Proxy
@@ -223,7 +231,7 @@ In this mode of operation your proxy should obtain the web server's IP address b
 * `bitrate` The bitrate your proxy requested for this chunk in Kbps.
 
 ### Testing
-To play a video through your proxy, you launch an instance of the web server, launch Firefox (see above), and point the browser on the URL `TODO: Update this information - http://<proxy_ip_addr>:<listen-port>/index.html`.
+To play a video through your proxy, you launch an instance of the web server, launch Chrome, and point the browser on the URL `http://<proxy_ip_addr>:<listen-port>/index.html`.
 
 ### Tips 
 #### Miscellaneous 
@@ -404,22 +412,23 @@ To submit:
 ## Autograder
 The autograder will be released roughly halfway through the assignment. You are encouraged to design tests by yourselves to fully test your proxy server and DNS server. You should *NEVER* rely on the autograder to debug your code. Clarifications on the autograder will be added in this section.
 
-### Instruction Sheet: Using the AWS AMI for Mininet with VNC and Starter Files
+
+## Instruction Sheet: Using the AWS AMI for Mininet with VNC and Starter Files
 
 This instruction sheet will guide you through the setup and use of the AWS AMI provided for your Mininet project. You will learn how to access the virtual machine using a VNC client, understand what VNC is, and work with the starter files provided. Follow each step carefully to ensure everything runs smoothly.
 
----
 
-#### What is VNC?
+
+### What is VNC?
 
 VNC (Virtual Network Computing) is a system that allows you to remotely control another computer’s desktop environment over a network. It transmits keyboard and mouse input from your local machine to a remote machine and displays the screen of the remote machine on your local machine. In this project, you will use VNC to access the graphical interface of your AWS AMI instance, so you can work with the provided tools, including Mininet.
 
----
+
 
 ### Step 1: Launch the AWS AMI Instance
 Once you’ve launched the AWS AMI instance from your console, you will need to access its desktop environment using a VNC client.
 
----
+
 
 ### Step 2: Launching the VNC Server
 
@@ -444,7 +453,7 @@ Once you’ve launched the AWS AMI instance from your console, you will need to 
    **Explanation**: The `vncserver` command launches the VNC server. When you run this command as a non-root user (i.e., without `sudo`), it creates a VNC session that runs on a specific display, typically `:1`, which corresponds to port 5901.
 
    - The password to the VNC server will be set to **eecs489** by default.
----
+
 
 ### Step 3: SSH Tunneling for VNC Access
 
@@ -464,7 +473,7 @@ Since VNC uses port 5901 (by default for display `:1`), we will create an SSH tu
 
    **Expected Output**: After running the SSH tunnel command, you should see no errors and be connected to your AWS instance. It will appear similar to a regular SSH session.
 
----
+
 
 ### Step 4: Accessing the VNC Server Using a VNC Client
 
@@ -480,7 +489,7 @@ Since VNC uses port 5901 (by default for display `:1`), we will create an SSH tu
 3. **Enter Your VNC Password**:
    When prompted, enter the password you set when starting the VNC server.
 
----
+
 
 ### Step 5: Working with the Starter Files
 
@@ -510,174 +519,7 @@ The `chrome` file is an executable that needs to be made runnable before it can 
    - **`sudo`**: This command runs the `chrome` executable with superuser (admin) privileges. Some programs may need elevated permissions to function correctly.
    - **`./chrome`**: The `./` specifies that the program is located in the current directory.
 
----
 
-#### 2. Running the `webserver.py`
-
-Another file in your starter pack is `webserver.py`, a Python script that launches a web server using the Flask framework. This server serves files over a persistent connection.
-
-1. **Getting content files for the Web Server:**
-
-Get the files for the web content from github using the following commands:
-
-``` wget https://github.com/eecs489staff/a2-videostreaming-via-cdn/raw/refs/heads/main/web/vod.tar ```
-``` tar -xvf vod.tar ```
-
-This will create a folder called ```vod``` that has all the content you need.
-
-2. **Run the Web Server:**
-
-   ```bash
-   python3 webserver.py
-   ```
-
-   **Explanation**:
-   - **`python3`**: This invokes Python version 3.
-   - **`webserver.py`**: The file that contains the Flask server code.
-   - Once the server is running, it will listen on port 80 and serve files over HTTP.
-
-   You can access the web server by navigating to `http://localhost` in a web browser on your local machine.
-
----
-
-### Step 6: Summary of Commands
-
-- **SSH into AWS**: 
-  ```bash
-  ssh -i /path/to/your-key.pem username@your-aws-instance-public-ip
-  ```
-- **Start VNC Server**: 
-  ```bash
-  vncserver
-  ```
-- **Create SSH Tunnel**: 
-  ```bash
-  ssh -i /path/to/your-key.pem -L 5901:localhost:5901 username@your-aws-instance-public-ip
-  ```
-- **Make `chrome` Executable**:
-  ```bash
-  chmod +x chrome
-  ```
-- **Run `chrome` as `sudo`**: 
-  ```bash
-  sudo ./chrome
-  ```
-- **Run `webserver.py`**:
-  ```bash
-  python3 webserver.py
-  ```
-
----
-
-## Acknowledgements
-This programming assignment is based on Peter Steenkiste's Project 3 from CMU CS 15-441: Computer Networks.
-### Instruction Sheet: Using the AWS AMI for Mininet with VNC and Starter Files
-
-This instruction sheet will guide you through the setup and use of the AWS AMI provided for your Mininet project. You will learn how to access the virtual machine using a VNC client, understand what VNC is, and work with the starter files provided. Follow each step carefully to ensure everything runs smoothly.
-
----
-
-#### What is VNC?
-
-VNC (Virtual Network Computing) is a system that allows you to remotely control another computer’s desktop environment over a network. It transmits keyboard and mouse input from your local machine to a remote machine and displays the screen of the remote machine on your local machine. In this project, you will use VNC to access the graphical interface of your AWS AMI instance, so you can work with the provided tools, including Mininet.
-
----
-
-### Step 1: Launch the AWS AMI Instance
-Once you’ve launched the AWS AMI instance from your console, you will need to access its desktop environment using a VNC client.
-
----
-
-### Step 2: Launching the VNC Server
-
-1. **Connect to Your AWS Instance:**
-   First, SSH into your AWS instance. Open a terminal on your local machine and use the following SSH command to log in:
-
-   ```bash
-   ssh -i /path/to/your-key.pem username@your-aws-instance-public-ip
-   ```
-
-   - **`ssh`**: This command initiates a Secure Shell session.
-   - **`-i /path/to/your-key.pem`**: The `-i` flag specifies the private key to use for authentication.
-   - **`username@your-aws-instance-public-ip`**: Replace `username` with the username provided for the AMI and `your-aws-instance-public-ip` with the public IP of your AWS instance.
-
-2. **Start the VNC Server:**
-   Once connected to your AWS instance, start the VNC server by running:
-
-   ```bash
-   vncserver
-   ```
-
-   **Explanation**: The `vncserver` command launches the VNC server. When you run this command as a non-root user (i.e., without `sudo`), it creates a VNC session that runs on a specific display, typically `:1`, which corresponds to port 5901.
-
-   - The password to the VNC server will be set to **eecs489** by default.
----
-
-### Step 3: SSH Tunneling for VNC Access
-
-Since VNC uses port 5901 (by default for display `:1`), we will create an SSH tunnel to securely forward traffic from your local machine to this port on the AWS instance.
-
-1. **Create an SSH Tunnel:**
-
-   Run the following command in a new terminal window on your local machine:
-
-   ```bash
-   ssh -i /path/to/your-key.pem -L 5901:localhost:5901 username@your-aws-instance-public-ip
-   ```
-
-   **Explanation**:
-   - **`-L 5901:localhost:5901`**: This forwards port 5901 on your local machine to port 5901 on the AWS instance (where the VNC server is running).
-   - The `username` and `your-aws-instance-public-ip` should match what you used in Step 2.
-
-   **Expected Output**: After running the SSH tunnel command, you should see no errors and be connected to your AWS instance. It will appear similar to a regular SSH session.
-
----
-
-### Step 4: Accessing the VNC Server Using a VNC Client
-
-1. **Open Your VNC Client**:
-   Install and launch a VNC client such as **RealVNC** or **TigerVNC**. 
-
-2. **Connect to Your AWS Instance**:
-   In the VNC client, connect to `localhost:5901`.
-
-   - **`localhost`**: Refers to your local machine.
-   - **`:5901`**: Refers to the port where VNC traffic is being forwarded via the SSH tunnel.
-
-3. **Enter Your VNC Password**:
-   When prompted, enter the password you set when starting the VNC server.
-
----
-
-### Step 5: Working with the Starter Files
-
-Once connected via VNC, you will find several starter files, including `chrome` and `webserver.py`. Below is an explanation of each file and how to work with them.
-
-#### 1. Making `chrome` Executable
-
-The `chrome` file is an executable that needs to be made runnable before it can be used. Follow these steps:
-
-1. **Run `chmod +x` to Make `chrome` Executable:**
-
-   ```bash
-   chmod +x chrome
-   ```
-
-   **Explanation**:
-   - **`chmod +x chrome`**: The `chmod` command changes the permissions of the file. The `+x` flag makes the file executable, meaning it can be run as a program.
-   - Once this is done, you’ll be able to run `chrome` using `sudo` as shown in the next step.
-
-2. **Run `chrome` as `sudo`:**
-
-   ```bash
-   sudo ./chrome
-   ```
-
-   **Explanation**:
-   - **`sudo`**: This command runs the `chrome` executable with superuser (admin) privileges. Some programs may need elevated permissions to function correctly.
-   - **`./chrome`**: The `./` specifies that the program is located in the current directory.
-
----
 
 #### 2. Running the `webserver.py`
 
@@ -693,10 +535,11 @@ Another file in your starter pack is `webserver.py`, a Python script that launch
    - **`python3`**: This invokes Python version 3.
    - **`webserver.py`**: The file that contains the Flask server code.
    - Once the server is running, it will listen on port 80 and serve files over HTTP.
+   - Make sure that the directory ```vod``` is in the same folder where you are running the webserver.
 
-   You can access the web server by navigating to `http://localhost` in a web browser on your local machine.
+   You can access the web server by navigating to `http://localhost` in the chrome web browser from the previous step.
 
----
+
 
 ### Step 6: Summary of Commands
 
@@ -725,8 +568,7 @@ Another file in your starter pack is `webserver.py`, a Python script that launch
   python3 webserver.py
   ```
 
----
 
-### Conclusion
 
-By following these steps, you will be able to connect to your AWS instance using VNC, make use of the starter files, and launch a web server for your project. Make sure you understand what each command does, and don't hesitate to experiment to gain a deeper understanding!
+## Acknowledgements
+This programming assignment is based on Peter Steenkiste's Project 3 from CMU CS 15-441: Computer Networks.
