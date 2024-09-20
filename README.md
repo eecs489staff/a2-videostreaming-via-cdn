@@ -19,6 +19,16 @@ Video traffic dominates the Internet. In this project, you will explore how vide
 
 This project is divided into Part 1 and Part 2. We recommend that you work on them simultaneously (both of them can be independently tested), and finally integrate both parts together.
 
+### Project Setup
+In your project, you will be dealing with **multiple hosts** setup in Mininet. You will be launching different things in different mininet hosts.   
+
+There are 3 main roles in this project: 
+1. CDNs/Web servers(at least 1): At least 1 host should run the start server script and start serving video/html content. These are the "CDN"s in this project. They provide our proxy with video content.
+2. Browser/Client(at least 1): At least 1 host should run the Firefox browser script and launch the browser. This is the client that negotiates with the proxy. 
+3. Proxy(exactly 1): Exactly 1 host should run the proxy. The proxy acts as a load balancer and is the "middleman" between clients and CDNs. It forwards client requests to one of the web servers, and forwards web server responses to the client.
+4. DNS/name server(exactly 1): Exactly 1 host should run the name server. The name server will tell the proxy which web server it should forward client request to when it receives a response from the server.
+In summary, at least 4 hosts should be running in the mininet for fully testing the project!!!. 
+
 <img src="real-CDN.png" title="Video CDN in the wild" alt="" width="350" height="256"/>
 
 ### Video CDNs in the Real World
@@ -95,8 +105,27 @@ For this project, we will be using an off the shelf browser (Chrome). To launch 
 
 We're leaving it up to you to write your own Mininet topology script for testing the package as a whole. A simple Starfish topology (all hosts connected to one switch in the middle) should suffice for testing. 
 
+### Setup Tips 
+> **How do I verify a web server is running?**
+1. Use `curl <host_ip>/index.html` and see if it prints out a bunch of html
+2. Go to `<host_ip>/index.html` in your firefox browser
+3. Use `netstat -tulpn | grep :80` to see if there's anything running on port 80 
+> **How do I shut down a web server?**
+1. sudo kill -9 <pid of the process using port 80> 
+
 <a name="part1"></a>
 ## Part 1: Bitrate Adaptation in HTTP Proxy
+
+**TL;DR:** Your miProxy should: 
+1. Accepting connections from **multiple clients** (think server in p1) 
+2. Be able to connect to one of the CDN web servers
+3. Forward HTTP requests from clients
+4. Wait and forward HTTP responses from CDNs
+5. Measure the throughput of each video segment
+6. Capture video manifest file HTTP requests, send a manifest request to web server, and send another request to return a no list manifest file to client 
+7. Capture video segment HTTP requests and modify the request according to measured throughputs 
+8. Be able to connect to name server and get DNS response 
+Read on for more details. 
 
 Many video players monitor how quickly they receive data from the server and use this throughput value to request better or lower quality encodings of the video, aiming to stream the highest quality encoding that the connection can handle. Instead of modifying an existing video client to perform bitrate adaptation, you will implement this functionality in an HTTP proxy through which your browser will direct requests.
 
@@ -196,6 +225,41 @@ In this mode of operation your proxy should obtain the web server's IP address b
 ### Testing
 To play a video through your proxy, you launch an instance of the web server, launch Firefox (see above), and point the browser on the URL `TODO: Update this information - http://<proxy_ip_addr>:<listen-port>/index.html`.
 
+### Tips 
+#### Miscellaneous 
+- You can copy the mininet python script from p1 and use it directly in this project. 
+- `miProxy` should **run forever**, unlike server in p1 which closes after sending ACK
+- You should have 1 sockfd listening incoming connections and multiple other sockfds for all connected clients (1 each)
+- Be careful with char arrays in DNS structs. They have fixed lengths of 100 but usually the actual content is much shorter. Directly converting them into `string` can cause very weird issues. Take out the actual content before converting them into strings.
+- You **MUST** use different <host_num> for using `start_server.py` and different <profile> for `launch_firefox.py` 
+
+#### Testing 
+> 1. Accepting connections from **multiple clients** (think server in p1) 
+> 2. Be able to connect to one of the CDN web servers
+> 3. Forward HTTP requests from clients
+> 4. Wait and forward HTTP responses from CDNs
+> 5. Measure the throughput of each video segment
+> 6. Capture video manifest file HTTP requests, send a manifest request to web server, and send another request to return a no list manifest file to client 
+> 7. Capture video segment HTTP requests and modify the request according to measured throughputs 
+> 8. Be able to connect to name server and get DNS response 
+It is recommended to incrementally test your project in this order. Verify the previous step works before proceeding to the next.
+
+When testing `miProxy` as a whole, you should test it under these scenarios progressively: 
+1. No DNS, single client
+2. No DNS, multiple clients 
+3. DNS, single client
+4. DNS, multiple clients
+
+#### Design 
+This project can be very overwhelming without a thoughtful class design choice. 
+Some design choices we recommend (not required) are: 
+- `get_server_ip()`: This function returns a fixed value on `--nodns`, and queries nameserver on `--dns`
+- `get_request_type()`: This function returns the type of the client's request. This can be  1. Video Manifest Request  2. Video Segment Request  3. Other requests. You should handle these 3 types of requests differently.
+- `handle_new_connection()`: This function handles new connection from the listen sockfd and add it to the existing connection fd set.
+- `handle_client_reqeust()`: This function handles new requests from existing connections.
+- `sendInt()/recvInt()`: This function sends/receives an int.
+- `ServerMeta`: This should be a struct that keeps track of the current moving average throughput and available bitrates **for each server**. 
+
 
 <a name="part2"></a>
 ## Part 2: DNS Load Balancing
@@ -255,6 +319,8 @@ Example text file format in `sample_round_robin.txt`:
 10.0.0.3
 ```
 
+> Hint: You should return `10.0.0.1` if you last response was `10.0.0.3` here. What technique can you use for accessing the list in a **circular** manner? 
+
 ### Geographic Distance Load Balancer
 Next you’ll make your DNS server somewhat more sophisticated. Your load balancer must return the closest video server to the client based on the proxy’s IP address. In the real world, this would be done by querying a database mapping IP prefixes to geographic locations. For your implementation, however, you will be given information in a text file about the entire state of the network, and your server will have to return to a given client its closest geographic server.
 
@@ -286,6 +352,7 @@ NUM_LINKS: 5
 3 4 6
 3 5 1
 ```
+> Hint: This is graph structure. Recall from 281, what algorithm can you use for finding the **shortest path** from client to any server? 
 
 To operate `nameserver`, it should be invoked as follows:
 
