@@ -70,7 +70,7 @@ After completing this programming assignment, students should be able to:
 <a name="environment"></a>
 
 ## Environment Setup
-You will use AWS academy's Learing lab similar to project 1 as your development environment. Please make sure you create an instance based on the shared AMI `EECS489p2` and select t3-medium for instance type. 
+You will use AWS academy's Learing lab similar to project 1 as your development environment. Please make sure you create an instance based on the shared AMI `EECS489p2` and select **_t3-medium_** for instance type. 
 
 Once you have logged into your instance, you can get the starter files by cloning the assignment github repository:
 
