@@ -537,7 +537,7 @@ Another file in your starter pack is `webserver.py`, a Python script that launch
    - Once the server is running, it will listen on port 80 and serve files over HTTP.
    - Make sure that the directory ```vod``` is in the same folder where you are running the webserver.
 
-   You can access the web server by navigating to `http://localhost` in the chrome web browser from the previous step.
+   You can access the web server by navigating to `http://10.0.0.x/index.html` (where `x` is the host number) in the chrome web browser from the previous step.
 
 
 
