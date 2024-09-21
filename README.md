@@ -504,3 +504,162 @@ This will create a folder called ```vod``` that has all the content you need.
 
 ## Acknowledgements
 This programming assignment is based on Peter Steenkiste's Project 3 from CMU CS 15-441: Computer Networks.
+### Instruction Sheet: Using the AWS AMI for Mininet with VNC and Starter Files
+
+This instruction sheet will guide you through the setup and use of the AWS AMI provided for your Mininet project. You will learn how to access the virtual machine using a VNC client, understand what VNC is, and work with the starter files provided. Follow each step carefully to ensure everything runs smoothly.
+
+---
+
+#### What is VNC?
+
+VNC (Virtual Network Computing) is a system that allows you to remotely control another computer’s desktop environment over a network. It transmits keyboard and mouse input from your local machine to a remote machine and displays the screen of the remote machine on your local machine. In this project, you will use VNC to access the graphical interface of your AWS AMI instance, so you can work with the provided tools, including Mininet.
+
+---
+
+### Step 1: Launch the AWS AMI Instance
+Once you’ve launched the AWS AMI instance from your console, you will need to access its desktop environment using a VNC client.
+
+---
+
+### Step 2: Launching the VNC Server
+
+1. **Connect to Your AWS Instance:**
+   First, SSH into your AWS instance. Open a terminal on your local machine and use the following SSH command to log in:
+
+   ```bash
+   ssh -i /path/to/your-key.pem username@your-aws-instance-public-ip
+   ```
+
+   - **`ssh`**: This command initiates a Secure Shell session.
+   - **`-i /path/to/your-key.pem`**: The `-i` flag specifies the private key to use for authentication.
+   - **`username@your-aws-instance-public-ip`**: Replace `username` with the username provided for the AMI and `your-aws-instance-public-ip` with the public IP of your AWS instance.
+
+2. **Start the VNC Server:**
+   Once connected to your AWS instance, start the VNC server by running:
+
+   ```bash
+   vncserver
+   ```
+
+   **Explanation**: The `vncserver` command launches the VNC server. When you run this command as a non-root user (i.e., without `sudo`), it creates a VNC session that runs on a specific display, typically `:1`, which corresponds to port 5901.
+
+   - The password to the VNC server will be set to **eecs489** by default.
+---
+
+### Step 3: SSH Tunneling for VNC Access
+
+Since VNC uses port 5901 (by default for display `:1`), we will create an SSH tunnel to securely forward traffic from your local machine to this port on the AWS instance.
+
+1. **Create an SSH Tunnel:**
+
+   Run the following command in a new terminal window on your local machine:
+
+   ```bash
+   ssh -i /path/to/your-key.pem -L 5901:localhost:5901 username@your-aws-instance-public-ip
+   ```
+
+   **Explanation**:
+   - **`-L 5901:localhost:5901`**: This forwards port 5901 on your local machine to port 5901 on the AWS instance (where the VNC server is running).
+   - The `username` and `your-aws-instance-public-ip` should match what you used in Step 2.
+
+   **Expected Output**: After running the SSH tunnel command, you should see no errors and be connected to your AWS instance. It will appear similar to a regular SSH session.
+
+---
+
+### Step 4: Accessing the VNC Server Using a VNC Client
+
+1. **Open Your VNC Client**:
+   Install and launch a VNC client such as **RealVNC** or **TigerVNC**. 
+
+2. **Connect to Your AWS Instance**:
+   In the VNC client, connect to `localhost:5901`.
+
+   - **`localhost`**: Refers to your local machine.
+   - **`:5901`**: Refers to the port where VNC traffic is being forwarded via the SSH tunnel.
+
+3. **Enter Your VNC Password**:
+   When prompted, enter the password you set when starting the VNC server.
+
+---
+
+### Step 5: Working with the Starter Files
+
+Once connected via VNC, you will find several starter files, including `chrome` and `webserver.py`. Below is an explanation of each file and how to work with them.
+
+#### 1. Making `chrome` Executable
+
+The `chrome` file is an executable that needs to be made runnable before it can be used. Follow these steps:
+
+1. **Run `chmod +x` to Make `chrome` Executable:**
+
+   ```bash
+   chmod +x chrome
+   ```
+
+   **Explanation**:
+   - **`chmod +x chrome`**: The `chmod` command changes the permissions of the file. The `+x` flag makes the file executable, meaning it can be run as a program.
+   - Once this is done, you’ll be able to run `chrome` using `sudo` as shown in the next step.
+
+2. **Run `chrome` as `sudo`:**
+
+   ```bash
+   sudo ./chrome
+   ```
+
+   **Explanation**:
+   - **`sudo`**: This command runs the `chrome` executable with superuser (admin) privileges. Some programs may need elevated permissions to function correctly.
+   - **`./chrome`**: The `./` specifies that the program is located in the current directory.
+
+---
+
+#### 2. Running the `webserver.py`
+
+Another file in your starter pack is `webserver.py`, a Python script that launches a web server using the Flask framework. This server serves files over a persistent connection.
+
+1. **Run the Web Server:**
+
+   ```bash
+   python3 webserver.py
+   ```
+
+   **Explanation**:
+   - **`python3`**: This invokes Python version 3.
+   - **`webserver.py`**: The file that contains the Flask server code.
+   - Once the server is running, it will listen on port 80 and serve files over HTTP.
+
+   You can access the web server by navigating to `http://localhost` in a web browser on your local machine.
+
+---
+
+### Step 6: Summary of Commands
+
+- **SSH into AWS**: 
+  ```bash
+  ssh -i /path/to/your-key.pem username@your-aws-instance-public-ip
+  ```
+- **Start VNC Server**: 
+  ```bash
+  vncserver
+  ```
+- **Create SSH Tunnel**: 
+  ```bash
+  ssh -i /path/to/your-key.pem -L 5901:localhost:5901 username@your-aws-instance-public-ip
+  ```
+- **Make `chrome` Executable**:
+  ```bash
+  chmod +x chrome
+  ```
+- **Run `chrome` as `sudo`**: 
+  ```bash
+  sudo ./chrome
+  ```
+- **Run `webserver.py`**:
+  ```bash
+  python3 webserver.py
+  ```
+
+---
+
+### Conclusion
+
+By following these steps, you will be able to connect to your AWS instance using VNC, make use of the starter files, and launch a web server for your project. Make sure you understand what each command does, and don't hesitate to experiment to gain a deeper understanding!
