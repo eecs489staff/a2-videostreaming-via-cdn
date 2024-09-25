@@ -75,7 +75,7 @@ You will use AWS academy's Learing lab similar to project 1 as your development 
 Once you have logged into your instance, you can get the starter files by cloning the assignment github repository:
 
 ```bash
-git clone git@github.com:eecs489staff/a2-videostreaming-via-cdn.git
+git clone https://github.com/eecs489staff/a2-videostreaming-via-cdn.git
 ```
 
 This will download the following files and folders:
@@ -115,7 +115,7 @@ We're leaving it up to you to write your own Mininet topology script for testing
 ### Setup Tips 
 > **How do I verify a web server is running?**
 1. Use `curl <host_ip>/index.html` and see if it prints out a bunch of html
-2. Go to `<host_ip>/index.html` in your firefox browser
+2. Go to `<host_ip>/index.html` in your Chrome browser
 3. Use `netstat -tulpn | grep :80` to see if there's anything running on port 80 
 > **How do I shut down a web server?**
 1. sudo kill -9 <pid of the process using port 80> 
@@ -145,9 +145,9 @@ You are to implement a simple HTTP proxy, `miProxy`. It accepts connections from
 
 `(assign ephemeral)` is referring to the fact that the kernel will pick the proxy's TCP port when it connects to the web server's port `80`. Nothing more than the proxy calling `connect()` is happening here.
 
-`miProxy` should accept multiple concurrent connections from clients (Firefox web browsers) using `select()` and be able to handle the required HTTP 1.1 requests for this assignment (e.g., HTTP `GET`).
+`miProxy` should accept multiple concurrent connections from clients (Chrome web browsers) using `select()` and be able to handle the required HTTP 1.1 requests for this assignment (e.g., HTTP `GET`).
 
-The picture above shows `miProxy` connected to multiple web servers, which would be the case if `miProxy` issued a DNS request for each new client connection received (e.g each new connection from an instance of Firefox). This is one approach for utilizing the DNS `nameserver` you will write in part 2. Another approach would be to issue a DNS request **once** when `miProxy` starts up, and direct all client requests to one web server for the entire runtime of `miProxy`. Either approach is acceptable for grading purposes, but the former is preferred because it provides more efficient load balancing, and it is closer to the behavior of an actual load balancing proxy.
+The picture above shows `miProxy` connected to multiple web servers, which would be the case if `miProxy` issued a DNS request for each new client connection received (e.g each new connection from an instance of Chrome). This is one approach for utilizing the DNS `nameserver` you will write in part 2. Another approach would be to issue a DNS request **once** when `miProxy` starts up, and direct all client requests to one web server for the entire runtime of `miProxy`. Either approach is acceptable for grading purposes, but the former is preferred because it provides more efficient load balancing, and it is closer to the behavior of an actual load balancing proxy.
 
 We will cover the basic usage of `select()` in the discussion.
 
@@ -239,7 +239,7 @@ To play a video through your proxy, you launch an instance of the web server, la
 - `miProxy` should **run forever**, unlike server in p1 which closes after sending ACK
 - You should have 1 sockfd listening incoming connections and multiple other sockfds for all connected clients (1 each)
 - Be careful with char arrays in DNS structs. They have fixed lengths of 100 but usually the actual content is much shorter. Directly converting them into `string` can cause very weird issues. Take out the actual content before converting them into strings.
-- You **MUST** use different <host_num> for using `start_server.py` and different <profile> for `launch_firefox.py` 
+- You **MUST** use different <host_num> for using `start_server.py` and different <profile> for `Chrome` 
 
 #### Testing 
 > 1. Accepting connections from **multiple clients** (think server in p1) 
