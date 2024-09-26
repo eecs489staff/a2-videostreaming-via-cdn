@@ -19,7 +19,6 @@ Video traffic dominates the Internet. In this project, you will explore how vide
 
 This project is divided into Part 1 and Part 2. We recommend that you work on them simultaneously (both of them can be independently tested), and finally integrate both parts together.
 
-
 <img src="real-CDN.png" title="Video CDN in the wild" alt="" width="350" height="256"/>
 
 ### Video CDNs in the Real World
@@ -78,26 +77,23 @@ Once you have logged into your instance, you can get the starter files by clonin
 git clone https://github.com/eecs489staff/a2-videostreaming-via-cdn.git
 ```
 
-This will download the following files and folders:
+Then, make sure you unzip `vod.tar`, which contains the video content files, and place it in the same directory as `webserver.py`:
 
-Please refer to the [setup instructions](#instruction-sheet-using-the-aws-ami-for-mininet-with-vnc-and-starter-files)  to test your code once you have part of the implementation completed.
+```bash
+   mv web/vod.tar .
+   tar -xvf vod.tar
+```
 
-In your project, you will be dealing with **multiple hosts** setup in Mininet. Differnet components of the project will be executed on separate mininet hosts.   
+In your project, you will have to run code on **multiple hosts** simultaneously in Mininet. Furthermore, you will need access to a GUI in order to test your code more easily, as we are interested in streaming video. To accomplish this, please refer to the [setup instructions](#instruction-sheet-using-the-aws-ami-for-mininet-with-vnc-and-starter-files) to set up a VNC client that will enable you to set up a GUI for your EC2 instance. 
 
-There are 4 main components in this project: 
+There are 4 main components in this project, each of which requires its own Mininet host:
 1. CDNs/Web servers(at least 1): At least 1 host should run the start server script and start serving video/html content. These are the "CDN"s in this project. They provide our proxy with video content. To start the webserver on a host in mininet, simply run the python script we provide using the following command:
 
 ```bash
    h(n) sudo python3 webserver.py
 ```
 
-Here `h(n)` is the host on mininet on which you are running the webserver. The webserver expects the content of the website to be in a folder called ```vod```. This folder should be in the same directory from which you are exeucting the web server. You can get the contents of this folder by executing the following commands.
-
-```
-mv web/vod.tar .
-tar -xvf vod.tar
-```
-
+Here `h(n)` is the host on mininet on which you are running the webserver. The webserver expects the content of the website to be in a folder called ```vod```. This folder should be in the same directory from which you are executing the web server, and can be unzipped from the starter files (see above). 
 
 Like any HTTP web server (not HTTPS) these instances of the server will be reachable on TCP port `80`. For simplicity, all of our web traffic for this assignment will be unencrypted and be done over HTTP.
 
@@ -106,9 +102,7 @@ Like any HTTP web server (not HTTPS) these instances of the server will be reach
 3. Proxy(exactly 1): Exactly 1 host should run the proxy. The proxy acts as a load balancer and is the "middleman" between clients and CDNs. It forwards client requests to one of the web servers, and forwards web server responses to the client.
 
 4. DNS/name server(exactly 1): Exactly 1 host should run the name server. The name server will tell the proxy which web server it should forward client request to when it receives a response from the server.
-In summary, at least 4 hosts should be running in the mininet for fully testing the project!!!. 
-
-
+In summary, at least 4 hosts should be running in Mininet for fully testing the project!. 
 
 We're leaving it up to you to write your own Mininet topology script for testing the package as a whole. A simple Starfish topology (all hosts connected to one switch in the middle) should suffice for testing. 
 
@@ -169,7 +163,7 @@ The constant `0 ≤ alpha ≤ 1` controls the tradeoff between a smooth throughp
 
 Once your proxy has calculated the connection's current throughput, it should select the highest offered bitrate the connection can support. For this project, we say a connection can support a bitrate if the average throughput is at least 1.5 times the bitrate. For example, before your proxy should request chunks encoded at 1000 Kbps, its current throughput estimate should be at least 1500 Kbps (1.5 Mbps).
 
-Your proxy should learn which bitrates are available for a given video by parsing the manifest file (the ".mdp" initially requested at the beginning of the stream). The manifest is encoded in XML; each encoding of the video is described by a `<media>` element, whose bitrate attribute you should find.
+Your proxy should learn which bitrates are available for a given video by parsing the manifest file (the ".mpd" initially requested at the beginning of the stream). The manifest is encoded in XML; each encoding of the video is described by a `<media>` element, whose bitrate attribute you should find.
 
 Your proxy will replace each chunk request with a request for the same chunk at the selected bitrate (in Kbps) by modifying the HTTP request’s `Request-URI`. Video chunk URIs are structured as follows:
 
@@ -181,9 +175,9 @@ For example, suppose the player requests chunk 2 of the video `tears-of-steel.mp
 
 To switch to a higher bitrate, e.g., 1000 Kbps, the proxy should modify the URI like this:
 
-`/path/to/video/vid-1000-seg-2`
+`/path/to/video/vid-1000-seg-2.m4s`
 
-> **IMPORTANT:** When the video player requests `tears-of-steel.mpd`, you should instead return `tears-of-steel-no-list.mpd` to the video player. This file does not list the available bitrates, preventing the video player from attempting its own bitrate adaptation. Your proxy should, however, fetch `tears_-of-steel.mpd` for itself (i.e., don’t return it to the client) so you can parse the list of available encodings as described above. Your proxy should keep this list of available bitrates in a global container (not on a connection by connection basis).
+> **IMPORTANT:** When the video player requests `tears-of-steel.mpd`, you should instead return `tears-of-steel-no-list.mpd` to the video player. This file does not list the available bitrates, preventing the video player from attempting its own bitrate adaptation. Your proxy should, however, fetch `tears_-of-steel.mpd` for itself (i.e., don’t return it to the client) so you can parse the list of available encodings as described above. Your proxy should keep this list of available bitrates for each video in a global container (not on a connection by connection basis).
 
 ### Running `miProxy`
 To operate `miProxy`, it should be invoked in one of two ways
@@ -479,6 +473,8 @@ Since VNC uses port 5901 (by default for display `:1`), we will create an SSH tu
 
 1. **Open Your VNC Client**:
    Install and launch a VNC client such as **RealVNC** or **TigerVNC**. 
+   
+   Note: MacOS has a [native VNC client](https://support.apple.com/guide/remote-desktop/virtual-network-computing-access-and-control-apde0dd523e/mac). 
 
 2. **Connect to Your AWS Instance**:
    In the VNC client, connect to `localhost:5901`.
@@ -487,13 +483,14 @@ Since VNC uses port 5901 (by default for display `:1`), we will create an SSH tu
    - **`:5901`**: Refers to the port where VNC traffic is being forwarded via the SSH tunnel.
 
 3. **Enter Your VNC Password**:
-   When prompted, enter the password you set when starting the VNC server.
-
+   When prompted, enter the password you set when starting the VNC server (this will be **eecs489** by default.)
 
 
 ### Step 5: Working with the Starter Files
 
-Once connected via VNC, you will find several starter files, including `chrome` and `webserver.py`. Below is an explanation of each file and how to work with them.
+Once connected via VNC, you will find several starter files, including `chrome` and `webserver.py`. Below is an explanation of each file and how to work with them. 
+
+**NOTE: When testing your project, make sure to run these commands on Mininet hosts rather than directly as the user! ** 
 
 #### 1. Making `chrome` Executable
 
