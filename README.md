@@ -90,7 +90,7 @@ There are 4 main components in this project, each of which requires its own Mini
 1. CDNs/Web servers(at least 1): At least 1 host should run the start server script and start serving video/html content. These are the "CDN"s in this project. They provide our proxy with video content. To start the webserver on a host in mininet, simply run the python script we provide using the following command:
 
 ```bash
-   h(n) sudo python3 webserver.py
+   h(n) sudo ./launch_webserver
 ```
 
 Here `h(n)` is the host on mininet on which you are running the webserver. The webserver expects the content of the website to be in a folder called ```vod```. This folder should be in the same directory from which you are executing the web server, and can be unzipped from the starter files (see above). 
