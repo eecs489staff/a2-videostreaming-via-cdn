@@ -106,6 +106,17 @@ In summary, at least 4 hosts should be running in Mininet for fully testing the 
 
 We're leaving it up to you to write your own Mininet topology script for testing the package as a whole. A simple Starfish topology (all hosts connected to one switch in the middle) should suffice for testing. 
 
+You may find it helpful to install xterm
+```bash
+sudo apt install xterm`
+```
+
+If xterm or ./chrome are not launching windows from within Mininet, run
+```bash
+xhost +
+```
+**outside** of your mininet environment.
+
 ### Setup Tips 
 > **How do I verify a web server is running?**
 1. Use `curl <host_ip>/index.html` and see if it prints out a bunch of html
@@ -518,19 +529,27 @@ The `chrome` file is an executable that needs to be made runnable before it can 
 
 
 
-#### 2. Running the `webserver.py`
+#### 2. Running the `webserver`
 
 Another file in your starter pack is `webserver.py`, a Python script that launches a web server using the Flask framework. This server serves files over a persistent connection.
 
 1. **Run the Web Server:**
 
+   First, run
+   
    ```bash
-   python3 webserver.py
+   chmod +x ./launch_webserver
+   ```
+
+   to make the webserver script executable.
+
+   Then,
+   
+   ```bash
+   ./launch_webserver
    ```
 
    **Explanation**:
-   - **`python3`**: This invokes Python version 3.
-   - **`webserver.py`**: The file that contains the Flask server code.
    - Once the server is running, it will listen on port 80 and serve files over HTTP.
    - Make sure that the directory ```vod``` is in the same folder where you are running the webserver.
 
@@ -560,9 +579,9 @@ Another file in your starter pack is `webserver.py`, a Python script that launch
   ```bash
   sudo ./chrome
   ```
-- **Run `webserver.py`**:
+- **Run `webserver`**:
   ```bash
-  python3 webserver.py
+  ./launch_webserver
   ```
 
 
