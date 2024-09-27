@@ -106,6 +106,17 @@ In summary, at least 4 hosts should be running in Mininet for fully testing the 
 
 We're leaving it up to you to write your own Mininet topology script for testing the package as a whole. A simple Starfish topology (all hosts connected to one switch in the middle) should suffice for testing. 
 
+You may find it helpful to install xterm
+```bash
+sudo apt install xterm`
+```
+
+If xterm or ./chrome are not launching windows from within Mininet, run
+```bash
+xhost +
+```
+**outside** of your mininet environment.
+
 ### Setup Tips 
 > **How do I verify a web server is running?**
 1. Use `curl <host_ip>/index.html` and see if it prints out a bunch of html
