@@ -270,8 +270,6 @@ Some design choices we recommend (not required) are:
 - `get_request_type()`: This function returns the type of the client's request. This can be  1. Video Manifest Request  2. Video Segment Request  3. Other requests. You should handle these 3 types of requests differently.
 - `handle_new_connection()`: This function handles new connection from the listen sockfd and add it to the existing connection fd set.
 - `handle_client_reqeust()`: This function handles new requests from existing connections.
-- `sendInt()/recvInt()`: This function sends/receives an int.
-- `ServerMeta`: This should be a struct that keeps track of the current moving average throughput and available bitrates **for each server**. 
 
 
 <a name="part2"></a>
