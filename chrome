@@ -6,4 +6,8 @@ fi
 sudo mount -t cgroup2 cgroup2 /sys/fs/cgroup > /dev/null 2>&1
 sudo mount -t securityfs securityfs /sys/kernel/security/ > /dev/null 2>&1
 
-sudo -u ubuntu chromium-browser > /dev/null 2>&1 &
+USER_DATA_DIR="/tmp/chrome-profile-$(hostname)-$$"
+
+rm -rf $USER_DATA_DIR
+
+sudo -u ubuntu chromium-browser --user-data-dir=$USER_DATA_DIR --incognito > /dev/null 2>&1 &
