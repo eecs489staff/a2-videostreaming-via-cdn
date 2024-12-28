@@ -1,0 +1,2 @@
+add_subdirectory(miProxy)
+add_subdirectory(nameserver)
