@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DASH Video Test</title>
+    <!-- Load DASH.js from CDN using HTTP -->
+    <script src="http://cdn.dashjs.org/latest/dash.all.min.js"></script>
+    <!-- Fallback to local copy if CDN fails -->
+    <script>
+        if (typeof dashjs === 'undefined') {
+            document.write('<script src="/js/dash.all.min.js"><\/script>');
+        }
+    </script>
+</head>
+<body>
+    <video id="videoPlayer" controls width="640" height="360"></video>
+    <script>
+
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        const clientID = crypto.randomUUID();
+
+        function init() {
+            var cur_host = window.location.hostname;
+            var cur_port = window.location.port;
+            var url = `http://${cur_host}:${cur_port}/vod/tears-of-steel.mpd`; // Load the .mpd file over HTTP
+
+            var video,
+                player;
+    
+            video = document.querySelector("video");
+            player = dashjs.MediaPlayer().create();
+    
+            /* Extend RequestModifier class and implement our own behaviour */
+            player.extend("RequestModifier", function () {
+                return {
+                    modifyRequestHeader: function (xhr, {url}) {
+                        /* Add custom header. Requires to set up Access-Control-Allow-Headers in your */
+                        /* response header in the server side. Reference: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/setRequestHeader */
+                        xhr.setRequestHeader('X-Client-ID', clientID);
+                        return xhr;
+                    },
+                };
+            });
+            player.initialize(video, url, true);
+        }
+        init();
+    </script>
+</body>
+</html>
+

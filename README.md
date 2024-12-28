@@ -19,7 +19,7 @@ Video traffic dominates the Internet. In this project, you will explore how vide
 
 This project is divided into Part 1 and Part 2. We recommend that you work on them simultaneously (both of them can be independently tested), and finally integrate both parts together.
 
-<img src="real-CDN.png" title="Video CDN in the wild" alt="" width="350" height="256"/>
+<img src="github_assets/real-CDN.png" title="Video CDN in the wild" alt="" width="350" height="256"/>
 
 ### Video CDNs in the Real World
 The figure above depicts a high level view of what this system looks like in the real world. Clients trying to stream a video first issue a DNS query to resolve the service's domain name to an IP address for one of the CDN's content servers. The CDN's authoritative DNS server selects the “best” content server for each particular client based on
@@ -31,7 +31,7 @@ Once the client has the IP address for one of the content servers, it begins req
 ### Video CDN in this Assignment
 Implementing an entire CDN is difficult; instead, you'll focus on a simplified version. First, your entire system will run on one host and rely on mininet to run several processes with arbitrary IP addresses on one machine. Mininet will also allow you to assign arbitrary link characteristics (bandwidth and latency) to each pair of “end hosts” (processes).
 
-<img src="our-CDN.png" title="Video CDN in assignment 2" alt="" width="330" height="111"/>
+<img src="github_assets/our-CDN.png" title="Video CDN in assignment 2" alt="" width="330" height="111"/>
 
 You'll write the gray-shaded components (i.e. the DNS Server and Proxy) in the figure above.
 
@@ -146,7 +146,7 @@ You are to implement a simple HTTP proxy, `miProxy`. It accepts connections from
 
 `miProxy` should listen for browser connections on `INADDR_ANY` on the port specified on the command line. It should then connect to a web server either specified on the command line or issue a DNS query to find out the IP address of the server to contact (this is covered in part 2).
 
-<img src="proxy-overview.png" title="Video CDN in the wild" alt="" width="534" height="171"/>
+<img src="github_assets/proxy-overview.png" title="Video CDN in the wild" alt="" width="534" height="171"/>
 
 `(assign ephemeral)` is referring to the fact that the kernel will pick the proxy's TCP port when it connects to the web server's port `80`. Nothing more than the proxy calling `connect()` is happening here.
 
@@ -345,7 +345,7 @@ NUM_LINKS: <number of links in the network>
 (repeats NUM_LINKS - 1 times)
 ```
 
-<img src="link-cost.PNG" title="Video CDN in the wild" alt="" width="400" height="155"/>
+<img src="github_assets/link-cost.PNG" title="Video CDN in the wild" alt="" width="400" height="155"/>
 
 As an example, the network shown above will have the following text file, `sample_geography.txt`:
 ```

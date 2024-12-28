@@ -1,3 +1,0 @@
-#!/bin/bash
-
-python3 -m gunicorn -b 0.0.0.0:80 -k gthread -t 0 --keep-alive 99999 webserver:app
