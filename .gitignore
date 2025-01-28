@@ -1,3 +1,4 @@
-content_server/static/vod/
+videoserver/static/videos/*
 build/
 __pycache__
+.venv
