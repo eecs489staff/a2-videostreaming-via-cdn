@@ -1,7 +1,3 @@
----
-layout: spec
----
-
 # Assignment 2: Adaptive Video Streaming via CDN
 
 ### Due: February 28th, 2025 @ 11:59 PM
