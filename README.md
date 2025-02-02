@@ -193,7 +193,7 @@ Clients will connect to `miProxy` over TCP. When a new client socket connects to
 
 For ease of implementation, we recommend that you use exactly one connection between the proxy and a videoserver for each connection between a client socket and the proxy. A connected client socket should use the same videoserver for the duration of its connection (note: client socket, not client). We define a new connection in this case as whenever a call to `accept()` occurs in the proxy. 
 
-Once a client is connected to `miProxy`, it will begin sending HTTP 1.1 requests. These requests may include `GET`, `POST`, and any number of other requests. A request from the client to `miProxy` will fall within one of five categories:
+Once a client is connected to `miProxy`, it will begin sending HTTP 1.1 requests. These requests may include `GET`, `POST`, and any number of other requests. A request from the client to `miProxy` will fall within one of four categories:
 1. A GET request for a video manifest (`.mpd`) file. 
 1. A GET request for a **video** segment (`.m4s`) file.
 1. A POST request to `/on-fragment-received` with information about a segment that the client has finished receiving.
