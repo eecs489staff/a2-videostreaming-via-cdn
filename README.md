@@ -250,7 +250,7 @@ In summary, the flow for a segment request works as follows:
 1. The proxy forwards the request to the video server.
 1. The video server sends the segment back to the proxy.
 1. The proxy forwards the segment to the client.
-1. Once the client fully receives the segment, it sends a POST request to `/on-fragment-received-start` with some throughput-related information. 
+1. Once the client fully receives the segment, it sends a POST request to `/on-fragment-received` with some throughput-related information. 
 1. The proxy uses this information to update the measured throughput of that client. 
 
 #### Seeing It In Action
@@ -353,7 +353,7 @@ spdlog::info("Segment requested by {} forwarded to {}:{} as {} at bitrate {} Kbp
 spdlog::info("Client {} finished receiving a segment of size {} bytes in {} ms. Throughput: {} Kbps. Avg Throughput: {} Kbps", client_uuid, segment_size, segment_duration, tput, avg_tput); 
 ```
 
-This log should be printed **after** the client makes the `POST` request to `/on-fragment-received-end`.
+This log should be printed **after** the client makes the `POST` request to `/on-fragment-received`.
 
 * `client_ip` IP address of the socket issuing the request to the proxy.
 * `client_port` Port of the socket issuing the request to the proxy.
