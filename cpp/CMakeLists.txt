@@ -1,5 +1,6 @@
 
 cmake_minimum_required(VERSION 3.15)
+cmake_policy(SET CMP0167 NEW)
 project(eecs489-project2-wn25)
 
 # Specify the C++ standard
@@ -14,25 +15,37 @@ SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 # Fetch the required dependencies
 include(FetchContent)
 
-FetchContent_Declare(
-    pugixml
-    GIT_REPOSITORY https://github.com/zeux/pugixml.git
-    GIT_TAG master
-)
-FetchContent_MakeAvailable(pugixml)
-
-FetchContent_Declare(
-        spdlog
-        GIT_REPOSITORY https://github.com/gabime/spdlog.git
-        GIT_TAG v1.14.1
-)
-FetchContent_MakeAvailable(spdlog)
-
-FetchContent_Declare(cxxopts
-        GIT_REPOSITORY https://github.com/jarro2783/cxxopts.git
+find_package(pugixml QUIET)
+if (NOT pugixml_FOUND)
+        message(STATUS "Fetching pugixml")
+        FetchContent_Declare(
+        pugixml
+        GIT_REPOSITORY https://github.com/zeux/pugixml.git
         GIT_TAG master
-)
-FetchContent_MakeAvailable(cxxopts)
+        )
+        FetchContent_MakeAvailable(pugixml)
+endif()
+
+find_package(spdlog QUIET)
+if (NOT spdlog_FOUND)
+        message(STATUS "Fetching spdlog")
+        FetchContent_Declare(
+                spdlog
+                GIT_REPOSITORY https://github.com/gabime/spdlog.git
+                GIT_TAG v1.14.1
+        )
+        FetchContent_MakeAvailable(spdlog)
+endif()
+
+find_package(cxxopts QUIET)
+if (NOT cxxopts_FOUND)
+        message(STATUS "Fetching cxxopts")
+        FetchContent_Declare(cxxopts
+                GIT_REPOSITORY https://github.com/jarro2783/cxxopts.git
+                GIT_TAG master
+        )
+        FetchContent_MakeAvailable(cxxopts)
+endif()
 
 find_package(Boost REQUIRED COMPONENTS regex)
 
