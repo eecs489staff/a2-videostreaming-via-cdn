@@ -106,7 +106,15 @@ We also encourage you to integrate CMake with your editor. For instance, VSCode 
 The two parts of the project can each be tested on their own before the integrated version is tested. You may wish to parallelize work among your groupmates; feel free to do so, but please remember that all individuals are responsible for understanding the entire project. 
 
 ### Running the Video Server
-We have provided a simple video server for you, implemented in the `videoserver/` directory. First, you will need to unzip some of the video files:
+We have provided a simple video server for you, implemented in the `videoserver/` directory. First, you will need to download and unzip some of the video files.
+
+We are using `git-lfs` (Git Large File Storage) to store the video files in the Git repo. Follow the instructions [here](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage) to install `git-lfs` on your machine. Once you have installed `git-lfs`, you can run the following commands to download the video files. 
+
+```bash
+$ git lfs install
+$ git lfs pull
+```
+
 ```bash
 $ cd videoserver/static/videos
 $ tar -xvzf michigan-hype-video.tar.gz
