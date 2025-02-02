@@ -1,5 +1,14 @@
-file(GLOB_RECURSE LOADBALANCER_SOURCES "*.cpp")
+# Set the LOADBALANCER_SOURCES variable to the list of all source files in the current directory
+set(
+    LOADBALANCER_SOURCES 
+    loadBalancer.cpp
+)
+
+# Tell CMake to create an executable named 'loadBalancer' from the source files
 add_executable(loadBalancer ${LOADBALANCER_SOURCES})
 
-target_link_libraries(loadBalancer PRIVATE cxxopts)
-target_include_directories(loadBalancer PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
+# Ensure that the cxxopts and common libraries are linked to the loadBalancer executable
+target_link_libraries(loadBalancer PRIVATE cxxopts common spdlog)
+
+# Include the common directory for headers (e.g. LoadBalancerProtocol.h)
+target_include_directories(loadBalancer PRIVATE ${PROJECT_SOURCE_DIR}/common)

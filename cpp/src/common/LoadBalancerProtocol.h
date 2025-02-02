@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdint>
 #include <netinet/in.h>
 
@@ -14,10 +16,10 @@
 struct LoadBalancerRequest {
     in_addr_t client_addr; // The IP address of the client.
     uint16_t request_id;   // A randomly-chosen identifier for this request.
-} __attribute__((__packed__));
+};
 
 struct LoadBalancerResponse {
     in_addr_t videoserver_addr; // The IP address of the videoserver.
     uint16_t videoserver_port;  // The port of the videoserver.
     uint16_t request_id;        // The request_id from the LoadBalancerRequest.
-} __attribute__((__packed__));
+};

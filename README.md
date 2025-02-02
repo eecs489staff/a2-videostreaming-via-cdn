@@ -1,351 +1,490 @@
-# Assignment 2: Video Streaming via CDN
+# Assignment 2: Adaptive Video Streaming via CDN
 
+### Due: February 28th, 2025 @ 11:59 PM
 
-### Due: October 11th, 2024 at 11:59 PM
+Video traffic dominates the Internet. In this project, you will explore how video content distribution networks (CDNs) work. In particular, you will implement (1) adaptive bitrate selection through an HTTP proxy server and (2) load balancing. 
+
+This project is divided into Part 1 and Part 2. We recommend that you work on them simultaneously (both of them can be independently tested), and finally integrate both parts together. This is a group project; you may work in groups of up to three people. 
+
+This project has the following goals:
+ - Understand the HTTP protocol and how it is used in practice to fetch data from the web. 
+ - Understand the DASH MPEG video protocol and how it enables adaptive bitrate video streaming. 
+ - Use polling to implement a server capable of handling multiple simultaneous client connections. 
+ - Understand how Video CDNs work in real life. 
 
 ## Table of contents
-* [Overview](#overview)
-* [Clarifications](#clarifications)
-* [Environment Setup](#environment)
-* [Part 1](#part1): Bitrate Adaptation in HTTP Proxy
-* [Part 2](#part2): DNS Load Balancing
-* [Submission Instructions](#submission-instr)
-* [Autograder](#autograder)
+1. [Background](#background)
+2. [Getting Started](#getting-started)
+3. [Part 1: HTTP Proxy](#part-1-http-proxy)
+4. [Part 2: Load Balancer](#part-2-load-balancer)
+5. [Autograder](#autograder)
 
-<a name="overview"></a>
-## Overview
-
-Video traffic dominates the Internet. In this project, you will explore how video content distribution networks (CDNs) work. In particular, you will implement adaptive bitrate selection, DNS load balancing, and an HTTP proxy server to stream video at high bit rates from the closest server to a given client.
-
-This project is divided into Part 1 and Part 2. We recommend that you work on them simultaneously (both of them can be independently tested), and finally integrate both parts together.
-
-<img src="github_assets/real-CDN.png" title="Video CDN in the wild" alt="" width="350" height="256"/>
+## Background
 
 ### Video CDNs in the Real World
-The figure above depicts a high level view of what this system looks like in the real world. Clients trying to stream a video first issue a DNS query to resolve the service's domain name to an IP address for one of the CDN's content servers. The CDN's authoritative DNS server selects the “best” content server for each particular client based on
-(1) the client's IP address (from which it learns the client's geographic location) and
+<img src="img/real-CDN.png" title="Video CDN in the wild" alt="" height=300/>
+
+The figure above depicts a high level view of what this system looks like in the real world. Clients trying to stream a video first issue a DNS query to resolve the service's domain name to an IP address for one of the CDN's proxies. The CDN's authoritative DNS server selects the “best” content server for each particular proxy based on
+(1) the proxy's IP address (from which it learns the proxy's geographic location) and
 (2) current load on the content servers (which the servers periodically report to the DNS server).
 
-Once the client has the IP address for one of the content servers, it begins requesting chunks of the video the user requested. The video is encoded at multiple bitrates. As the client player receives video data, it calculates the throughput of the transfer and it requests the highest bitrate the connection can support.
+Once the client has the IP address for one of the content servers, it begins requesting chunks of the video the user requested. The video is encoded at multiple bitrates. As the client player receives video data, it calculates the throughput of the transfer and it requests the highest bitrate the connection can support (i.e. play a video smoothly, without buffering if possible). For instance, you have almost certainly used a system like this when using the default "Auto" quality option on YouTube:
+
+<img src="img/youtube-auto.png" title="Video CDN in the wild" alt="" height=300/>
+
 
 ### Video CDN in this Assignment
-Implementing an entire CDN is difficult; instead, you'll focus on a simplified version. First, your entire system will run on one host and rely on mininet to run several processes with arbitrary IP addresses on one machine. Mininet will also allow you to assign arbitrary link characteristics (bandwidth and latency) to each pair of “end hosts” (processes).
 
-<img src="github_assets/our-CDN.png" title="Video CDN in assignment 2" alt="" width="330" height="111"/>
+Normally, the video player clients select the bitrate of the video segments they request based on the throughput of the connection. However, in this assignment, you will be implementing this functionality on the server side. The server will estimate the throughput of the connection with each client and select a bitrate it deems appropriate.
 
-You'll write the gray-shaded components (i.e. the DNS Server and Proxy) in the figure above.
+<img src="img/our-architecture.png" title="Video CDN in assignment 2" alt="" height=400/>
 
-**Video Viewer.** You can use an off-the-shelf Video Viewer like a web browser (Firefox, Chrome, etc.) to play videos served by your CDN (via your proxy).
+You'll write the components highlighted in yellow in the diagram above (the proxy and the load balancer). 
 
-**Proxy.** Rather than modify the video player itself, you will implement adaptive bitrate selection in an HTTP proxy. The player requests chunks with standard HTTP GET requests; your proxy will intercept these and modify them to retrieve whichever bitrate your algorithm deems appropriate.
+**Clients:** You can use an off-the-shelf web browser (Firefox, Chrome, etc.) to play videos served by your CDN (via your proxy). You can simulate multiple clients by opening multiple tabs of the web browser and accessing the same video, or even using multiple browsers. You will use network throttling options in your browser to simulate different network conditions (available in both Firefox and Chrome).
 
-**Web Server.** Video content will be served from an off-the-shelf web server. As with the proxy, you will run multiple instances of the web server on different IP addresses to simulate a CDN with several content servers.
+**Video Server(s):** Video content will be served from our custom video server; instructions for running it are included below. With the included instructions, you can run multiple instances of video servers as well on different ports. 
 
-**DNS Server.** You will implement a simple DNS that supports only a small portion of actual DNS's functionality. Your server will respond to each request with the “best” server for that particular client.
+**Proxy:** Rather than modify the video player itself, you will implement adaptive bitrate selection in an HTTP proxy. The player requests chunks with standard HTTP GET requests; your proxy will intercept these and modify them to retrieve whichever bitrate your algorithm deems appropriate, returning them back to the client. Your proxy will be capable of handling multiple clients simultaneously. 
 
-To summarize, this assignment has the following components:
+**Load Balancer:** You will implement a simple load balancer that can assign clients to video servers either geographically or using a simple round-robin method. This load balancer is a stand-in for a DNS server; as we are not running a DNS protocol, we will refer to it as a load balancer. The load balancer will read in information about the various video servers from a file when it is created; it will not communicate with the video servers themselves. 
 
-* [Part 1](#part1): Bitrate Adaptation in HTTP Proxy
-* [Part 2](#part2): DNS Load Balancing
+After you implement the basics of the [HTTP Proxy](#part-1-http-proxy) and the [Load Balancer](#part-2-load-balancer), you will integrate the two together. The proxy can query the load balancer every time a new client connects to figure out which video server to connect to. 
 
-## Learning Outcomes
+### Important: IPs and Ports
+In the real world, IP Addresses disambiguate machines. Typically, a given service runs on a predetermined port on a machine. For instance, HTTP web servers typically use port 80, while HTTPS servers use port 443. 
 
-After completing this programming assignment, students should be able to:
+For the purposes of this project, as we want you to be able to run everything locally, we will instead distinguish different video servers by their (ip, port) tuple. For instance, you may have two video servers running on (localhost, 8000) and (localhost, 8001). We want to emphasize that this would not make much sense in the real world; you would probably use a DNS server for load balancing, which would point to several IPs where video servers are hosted, each using the same port for a specific service.
 
-* Explain how HTTP proxies, DNS servers, and video CDNs work
-* Create topologies and change network characteristics in Mininet to test networked systems
+## Getting Started 
+This project has been adapted so that it can be run and tested on your own device, without any need for a virtual machine. Although this leads to a slightly less realism, we hope it makes development faster and easier. Feel free to use your VM from Project 1 to run your code in Mininet for the full experience. 
 
-<a name="clarifications"></a>
-## Clarifications
+> Note: The only configuration that cannot be tested locally is running a geographic load balancer in conjunction with a load-balancing miProxy. This will have to occur on Mininet. However, you are able to locally test both (1) miProxy with a round-robin load balancer and (2) a geographic load balancer on its own. 
 
-* For the proxy you implement in part 1, you will need to parse some HTTP traffic. To make your life easier for this project, you **do not** need to be concerned about parsing all the information in these HTTP messages. There are only two things that you need to care about searching for: `\r\n\r\n` and `Content-Length`. The former is used to denote the end of an HTTP header, and the latter is used to signify the size of the HTTP body in bytes.
+To get started, clone this Github repository. You can then create your own  **private** GitHub repository, and push these files to that repo. Your repository should be shared only with your group members, and should not be publicly accessible. **Making your solution code publicly accessible, even by accident, will be considered a violation of the Honor Code.** 
 
-* The proxy should be able to support multiple browsers playing videos simultaneously. This means you should test with multiple browsers all connecting to the same proxy. In addition you should also test with multiple proxies each serve some number of browser(s), in order to make sure that each proxy instance does not interfere with others. 
+The structure of the files is as follows:
+```
+├── README.md
+├── cpp
+│   ├── CMakeLists.txt
+│   └── src
+│       ├── CMakeLists.txt
+│       ├── common
+│       │   ├── loadBalancerProtocol.h
+│       │   ├── networkUtils.cpp
+│       │   └── networkUtils.h
+│       ├── loadBalancer
+│       │   └── CMakeLists.txt
+│       └── miProxy
+│           └── CMakeLists.txt
+├── img/...
+├── sample_geography.txt
+├── sample_round_robin.txt
+├── util
+│   └── queryLoadBalancer
+└── videoserver
+|   ├── launch_videoservers.py
+|   └── ...
+```
+### Your Code
+As in Project 1, we will be using CMake as our build system. The top-level CMake file is at `cpp/CMakeLists.txt`. There are also `CMakeLists.txt` files in every subdirectory. These files have been filled out for you. We encourage you to take a look and see how they work. You may need to modify them if the structure of your code changes. You **may not** use any external packages other than the ones we provide: `spdlog`, `cxxopts`, `pugixml`, and `re2`.
 
-* While testing the proxy you implement in part 1, you may notice that one browser may sometimes open multiple connections to your proxy server. Your proxy should still continue to function as expected in this case. In order to account for these multiple connections, you may use the browser IP address to uniquely identify each connection. This implies that while testing your proxy server, each browser will have a unique IP address. (For example, only one browser will have an IP address of 10.0.0.2)
+We have also included a `common` folder with a few network utility functions (these are copied over from the Discussion 3 example) as well as the protocol definition for communicating with the load balancer. You can (and should!) add more network utility functions and other code that can be shared between `miProxy` and `loadBalancer` into the common folder. 
 
-* Throughput should be measured on each fragment. For example, throughput should be calculated separately for both Seg-1 and Seg-2.
+The structure of the project is otherwise self-explanatory; your implementation for `miProxy` should go in the `miProxy` folder, and your implementation of the `loadBalancer` should go in the `loadBalancer` folder. The following commands should allow us to build your code from the base of the project:
+```bash
+$ mkdir build
+$ cd build
+$ cmake ../cpp
+$ make
+```
+This should result in executables `build/bin/miProxy` and `build/bin/loadBalancer`.  
 
-<a name="environment"></a>
+We also encourage you to integrate CMake with your editor. For instance, VSCode has a CMakeTools extension. This enables VSCode's intellisense to properly find code dependencies, which can eliminate annoying fake syntax errors. There are many resources online for you to figure out how to do this. 
 
-## Environment Setup
-You will use AWS academy's Learing lab similar to project 1 as your development environment. Please make sure you create an instance based on the shared AMI `EECS489p2` and select **_t3-medium_** for instance type. 
+The two parts of the project can each be tested on their own before the integrated version is tested. You may wish to parallelize work among your groupmates; feel free to do so, but please remember that all individuals are responsible for understanding the entire project. 
 
-Once you have logged into your instance, you can get the starter files by cloning the assignment github repository:
+### Running the Video Server
+We have provided a simple video server for you, implemented in the `videoserver/` directory. First, you will need to unzip some of the video files:
+```bash
+$ cd videoserver/static/videos
+$ tar -xvzf michigan-hype-video.tar
+$ tar -xvzf tears-of-steel.tar
+```
+This should lead to two folders -- `michigan-hype-video` and `tears-of-steel` -- being created inside the `videos/` folder. 
+
+For Python, we will be using the [uv package manager](https://github.com/astral-sh/uv). Please follow the instructions on the linked Github page to install uv on your machine. 
+
+Once you have installed uv, you can navigate to the `videoserver/` directory and run 
+```bash
+uv sync
+```
+This will download all necessary Python dependencies and create a virtual environment. You can then run 
+```bash
+uv run launch_videoservers.py 
+``` 
+to launch videoservers. This takes the following command line arguments
+* `-n | --num-servers`: Defaults to 1. Controls how many video servers will be launched. 
+* `-p | --port`: Defaults to 8000. Controls which port the video server(s) will serve on. For multiple videoservers, the ports will be sequential; for instance, running the following command will launch three videoservers on ports 8000, 8001, and 8002. 
+```bash
+uv run launch_videoservers.py -n 3 -p 8000
+```
+> Note: It is not necessary to have multiple videoservers running for the early part of this project. You will only really need this if you want to test how well your `miProxy` works with load balancing and separating multiple clients. 
+
+Once you launch a videoserver (e.g. on port 8000), you can navigate to `127.0.0.1:8000` (or `localhost:8000`) in your browser to see it. It will look something like this:
+
+<img src="img/videoserver.png" title="Video CDN in assignment 2" alt="" height=300/>
+
+You can click on the linked pages to play the videos. The first one (Tears of Steel) does not have audio, while the second one (Michigan Hype Video) does; this can help vary your testing. The Tears of Steel video also has watermarks to indicate the bitrate of the current segment. The video server will also log helpful output to stdout that can help you debug. 
+
+Note that you are currently directly accessing the video server; when testing this project, you will instead navigate to the `ip:port` of your running proxy, which will communicate with the video server for you. 
+
+### Libraries
+As in Project 1, we expect you to use `cxxopts` for parsing command-line options, and `spdlog` for variable-level logging. We will require certain logs to be printed using `spdlog` from both the HTTP proxy and the load balancer in order to faciliate autograding and debugging. 
+
+We have also included `pugixml`, a [C++ XML-parsing library](https://pugixml.org/) and the `boost::regex` library in the CMake files. You do not have to use these libraries, but it will make parsing video manifest files and HTTP requests much easier. Documentation for these libraries is available online. 
+
+> Why not use #include \<regex\>? The C++ standard library's regex header is widely known to be slow and inefficient. This means that you will instead see packages like `re2` or `boost` used in production code.
+
+You may have to install Boost on your system. If you are on a Mac, this is very easy. Simply use Homebrew and run
 
 ```bash
-git clone https://github.com/eecs489staff/a2-videostreaming-via-cdn.git
+brew install cmake boost
 ```
+and you're done and ready to skip to "Setting Up the Starter Code".
 
-Then, make sure you unzip `vod.tar`, which contains the video content files, and place it in the same directory as `webserver.py`:
-
+On Windows or Linux, installing CMake and Boost are also relatively simple. On Ubuntu / WSL, you can run
 ```bash
-   mv web/vod.tar .
-   tar -xvf vod.tar
+sudo apt-get install cmake libboost-all-dev
 ```
 
-In your project, you will have to run code on **multiple hosts** simultaneously in Mininet. Furthermore, you will need access to a GUI in order to test your code more easily, as we are interested in streaming video. To accomplish this, please refer to the [setup instructions](#instruction-sheet-using-the-aws-ami-for-mininet-with-vnc-and-starter-files) to set up a VNC client that will enable you to set up a GUI for your EC2 instance. 
-
-There are 4 main components in this project, each of which requires its own Mininet host:
-1. CDNs/Web servers(at least 1): At least 1 host should run the start server script and start serving video/html content. These are the "CDN"s in this project. They provide our proxy with video content. To start the webserver on a host in mininet, simply run the python script we provide using the following command:
-
-```bash
-   h(n) sudo ./launch_webserver
-```
-
-Here `h(n)` is the host on mininet on which you are running the webserver. The webserver expects the content of the website to be in a folder called ```vod```. This folder should be in the same directory from which you are executing the web server, and can be unzipped from the starter files (see above). 
-
-Like any HTTP web server (not HTTPS) these instances of the server will be reachable on TCP port `80`. For simplicity, all of our web traffic for this assignment will be unencrypted and be done over HTTP.
-
-2. Browser/Client(at least 1): At least 1 host should run the Chrome browser script and launch the browser. This is the client that negotiates with the proxy. Since Chrome uses a Graphical User Interface, please refer to [setup instructions](#instruction-sheet-using-the-aws-ami-for-mininet-with-vnc-and-starter-files) on how to login to your aws instance remotely with a Graphical interface.
-
-3. Proxy(exactly 1): Exactly 1 host should run the proxy. The proxy acts as a load balancer and is the "middleman" between clients and CDNs. It forwards client requests to one of the web servers, and forwards web server responses to the client.
-
-4. DNS/name server(exactly 1): Exactly 1 host should run the name server. The name server will tell the proxy which web server it should forward client request to when it receives a response from the server.
-In summary, at least 4 hosts should be running in Mininet for fully testing the project!. 
-
-We're leaving it up to you to write your own Mininet topology script for testing the package as a whole. A simple Starfish topology (all hosts connected to one switch in the middle) should suffice for testing. 
-
-You may find it helpful to install xterm
-```bash
-sudo apt install xterm`
-```
-
-If xterm or ./chrome are not launching windows from within Mininet, run
-```bash
-xhost +
-```
-**outside** of your mininet environment.
-
-### Setup Tips 
-> **How do I verify a web server is running?**
-1. Use `curl <host_ip>/index.html` and see if it prints out a bunch of html
-2. Go to `<host_ip>/index.html` in your Chrome browser
-3. Use `netstat -tulpn | grep :80` to see if there's anything running on port 80 
-> **How do I shut down a web server?**
-1. sudo kill -9 <pid of the process using port 80> 
-
-
-<a name="part1"></a>
-## Part 1: Bitrate Adaptation in HTTP Proxy
-
-**TL;DR:** Your miProxy should: 
-1. Accepting connections from **multiple clients** (think server in p1) 
-2. Be able to connect to one of the CDN web servers
-3. Forward HTTP requests from clients
-4. Wait and forward HTTP responses from CDNs
-5. Measure the throughput of each video segment
-6. Capture video manifest file HTTP requests, send a manifest request to web server, and send another request to return a no list manifest file to client 
-7. Capture video segment HTTP requests and modify the request according to measured throughputs 
-8. Be able to connect to name server and get DNS response 
-Read on for more details. 
+## Part 1: HTTP Proxy
 
 Many video players monitor how quickly they receive data from the server and use this throughput value to request better or lower quality encodings of the video, aiming to stream the highest quality encoding that the connection can handle. Instead of modifying an existing video client to perform bitrate adaptation, you will implement this functionality in an HTTP proxy through which your browser will direct requests.
 
-You are to implement a simple HTTP proxy, `miProxy`. It accepts connections from web browsers, modifies video chunk requests as described below, resolves the web server's DNS name, opens a connection with the resulting IP address, and forwards the modified request to the server. Any data (the video chunks) returned by the server should be forwarded, *unmodified*, to the browser.
+You are to implement a simple HTTP proxy, `miProxy`. It accepts connections from web browsers, modifies video chunk requests as described below, opens a connection with the resulting IP address, and forwards the modified request to the server. Any data (the video chunks) returned by the server should be forwarded, *unmodified*, to the browser. `miProxy` should:
 
-`miProxy` should listen for browser connections on `INADDR_ANY` on the port specified on the command line. It should then connect to a web server either specified on the command line or issue a DNS query to find out the IP address of the server to contact (this is covered in part 2).
+1. Run as a server on a specified port
+2. Accept connections from clients, including multiple clients simultaneously
+3. Connect to a video server
+4. Forward HTTP requests from clients to the appropriate video server
+5. Forward HTTP responses from the video server to the appropriate client
+6. Measure the throughput of each video segment to each client
+7. Capture video manifest file HTTP requests, returning the no-list manifest file to clients while reqeuesting the regular manifest file for itself
+8. Capture video segment HTTP requests and modify the request to have the appropriate bitrate
 
-<img src="github_assets/proxy-overview.png" title="Video CDN in the wild" alt="" width="534" height="171"/>
+You will implement two modes of miProxy: 
+1. No load balancing occurs, with a single video server for all clients. 
+2. A load balanced version, where miProxy queries your load balancer (implemented in Part 2) to figure out which video server to assign to each incoming TCP connection. 
 
-`(assign ephemeral)` is referring to the fact that the kernel will pick the proxy's TCP port when it connects to the web server's port `80`. Nothing more than the proxy calling `connect()` is happening here.
+### Clients vs. Incoming Sockets
+For optimization, web browsers may open up several TCP connections for a single tab; this can lead to multiple sockets connecting to your `miProxy` server for a single client. We will use the term "client socket" to refer to an individual socket and "client" to refer to a group of sockets of a single tab that form one logical client. 
 
-`miProxy` should accept multiple concurrent connections from clients (Chrome web browsers) using `select()` and be able to handle the required HTTP 1.1 requests for this assignment (e.g., HTTP `GET`).
+### Handling Clients 
 
-The picture above shows `miProxy` connected to multiple web servers, which would be the case if `miProxy` issued a DNS request for each new client connection received (e.g each new connection from an instance of Chrome). This is one approach for utilizing the DNS `nameserver` you will write in part 2. Another approach would be to issue a DNS request **once** when `miProxy` starts up, and direct all client requests to one web server for the entire runtime of `miProxy`. Either approach is acceptable for grading purposes, but the former is preferred because it provides more efficient load balancing, and it is closer to the behavior of an actual load balancing proxy.
+In Discussion 3, we will cover an example of using **select polling** to handle multiple incoming client sockets. You should watch the Discussion 3 recording, go over the slides, and look through the example code [here](https://github.com/mosharaf/eecs489/tree/w25/Discussion/ds3-echoserver). `miProxy` should handle multiple client sockets in much the same way. 
 
-We will cover the basic usage of `select()` in the discussion.
+> Note: Feel free to copy/adapt code that we give you. You should understand any code that you put into your project; `select()` is rather unintuitive and you will encounter nasty bugs if you use it without understanding it. 
 
-> *Note: A good resource for socket programming is [Beej's Guide to Network Programming Using Internet Sockets](https://beej.us/guide/bgnet/html/).*
+Clients will connect to `miProxy` over TCP. When a new client socket connects to `miProxy`, `miProxy` should 
+1. [In load balancing mode] Send a request to the load balancer to figure out which video server to use for this client. 
+2. [In either mode] Open up a corresponding connection to the videoserver. 
 
-### Throughput Calculation
+For ease of implementation, we recommend that you use exactly one connection between the proxy and a videoserver for each connection between a client socket and the proxy. A connected client socket should use the same videoserver for the duration of its connection (note: client socket, not client). We define a new connection in this case as whenever a call to `accept()` occurs in the proxy. 
 
-Your proxy measure the the throughput between the server and itself to determine the bitrate. Your proxy should estimate each stream's throughput once per chunk. Make sure to note the start time of each chunk when your proxy started receiving the chunk from the server, and save another timestamp when you have finished receiving the chunk from the server. Given the size of the chunk, you can now compute the throughput by dividing chunk size by the time window.
+Once a client is connected to `miProxy`, it will begin sending HTTP 1.1 requests. These requests may include `GET`, `POST`, and any number of other requests. A request from the client to `miProxy` will fall within one of five categories:
+1. A GET request for a video manifest (`.mpd`) file. 
+1. A GET request for a **video** segment (`.m4s`) file.
+1. A POST request to `/on-fragment-received` with information about a segment that the client has finished receiving.
+1. All other requests.
 
+We discuss the first three categories below in further detail. Any request that falls into the fourth category should be forwarded as-is to the appropriate video server, without any modifications. The video server will send HTTP 1.1 responses to these requests. **All responses from the video server should be forwarded without modification to the corresponding client.**
 
-Each video is a sequence of chunks. To smooth your throughput estimation, you should use an exponentially-weighted moving average (EWMA). Every time you make a new measurement (as outlined above), update your current throughput estimate as follows:
+Within your client-serving loop, you may wonder about how much work you should do for a single client before moving on to the next one. To be efficient, we require that you only handle a single HTTP request from a client at a time before moving on. In other words, your code should look something like:
+```
+while (true)
+	select(...)
+	...
+	if (client socket is ready)
+		receive request from client
+		deal with single request (e.g forwarding to webserver, updating throughput, etc.)
+		move on
+```
+Your code should NOT look like:
+```
+while (true)
+	select(...)
+	...
+	if (client socket is ready)
+		receive request from client
+		forward to webserver
+		receive webserver response
+		forward to client 
+		receive client "on-fragment-received"
+		move on
+```
 
-`T_cur = alpha * T_new + (1 - alpha) * T_cur`
+### Handling Client Requests
 
-The constant `0 ≤ alpha ≤ 1` controls the tradeoff between a smooth throughput estimate (`alpha` closer to 0) and one that reacts quickly to changes (`alpha` closer to 1). You will control `alpha` via a command line argument. **_When a new stream starts, set `T_cur` to the *lowest* available bitrate for that video_**.
+When arriving on a page with a video (e.g. `/videos/tears-of-steel`), the client will first attempt to request a `vid.mpd` file (e.g `GET /videos/tears-of-steel/vid.mpd`). This is a manifest file that contains information about which bitrates are available. Examples of this file are in the starter code at `videoserver/static/videos/*/vid.mpd`. 
 
+Any HTTP request that asks for a `.mpd` file should be flagged as a manifest file request. Your proxy should instead request the corresponding `vid-no-list.mpd` file to forward back to the browser. Furthermore, your proxy should request the original `vid.mpd` manifest file for itself so that the proxy can figure out which bitrates are available for a given video. The manifest file is an `XML` file -- you should use `pugixml` to simplify parsing it. You will notice that several `<Representation>` rows exist within this file. The important part of each row is the `bandwidth` field, which specifies the available bandwidths **in Kbps**. You should only parse the representation rows for the `video` section, ignoring the `audio` section (see the `.mpd` file under `michigan-hype-video`). 
+
+Your proxy **should** store available bitrates for each video somewhere that persists across connections. You can uniquely identify a video by the path to its `.mpd` file. In other words, only the first-ever request for the manifest file of a particular video should trigger a request for the regular manifest file AND the `no-list` manifest file. All subsequent requests should only lead to a request for the `no-list` file. 
+
+Once the client parses the manifest file, it begins requesting video segment files. You should check that a request is for a **video** segment file by checking that the path falls within the `video` folder of the filepath to the `.mpd`, and that the file extension is `.m4s`. For simplicity, you may assume that the video segment requests paths are all in the form:
+
+`[PATH-TO-VIDEO]/video/vid-[BITRATE]-seg-[NUMBER].m4s`
+
+> Note: You may see requests for audio files (also ending with .m4s) and an init.mp4 file. These should not be treated as video segment requests. 
+
+For any incoming video segment request from a client socket, your proxy should replace the `[BITRATE]` of the requested segment with the appropriate `[BITRATE]` (chosen from the available bitrates in the `.mpd` file and based on your throughput calculations) before forwarding it to the video server. We will discuss how to determine the appropriate bitrate below. 
+
+Once you receive a response from the videoserver and forward it to a client, the client will reply with a POST request to the endpoint `/on-fragment-received`. This will contain information within the headers that will be useful for your throughput calculation. Your proxy should use this request to update the throughput for that particular client (note: not client socket) and should not forward this request to a videoserver. 
+
+In summary, the flow for a segment request works as follows:
+
+1. The proxy receives a request for a video segment from a client.
+1. Using the currently calculated throughput for that client, the proxy modifies the request to request the segment at the appropriate bitrate.
+1. The proxy forwards the request to the video server.
+1. The video server sends the segment back to the proxy.
+1. The proxy forwards the segment to the client.
+1. Once the client fully receives the segment, it sends a POST request to `/on-fragment-received-start` with some throughput-related information. 
+1. The proxy uses this information to update the measured throughput of that client. 
+
+#### Seeing It In Action
+
+In most browsers, it is very easy to view HTTP request-responses. For instance, in Chrome, you can do Right Click --> Inspect Element, and then click on the Network tab to view this information. You can click on each request to view its headers and raw data. This can be very helpful to understand what is happening with these requests, and debug the performance of your proxy. 
+
+<img src="img/network-tab.png" title="Network Tab on Chrome" alt="" height="400"/>
+
+You will notice that the `on-fragment-received` requests return an error code from the videoserver; this is because your proxy should intercept them and the videoserver should never see them. 
+
+> Bonus: Click on one of the network requests with error code 418 for a surprise; what does your browser interpret the error code as? You can read more about that [here](https://en.wikipedia.org/wiki/Hyper_Text_Coffee_Pot_Control_Protocol). 
+
+### Parsing HTTP 1.1 Headers
+
+In HTTP 1.1, persistent connections are enabled by default. This means that the connection between the client and the proxy will remain open after the response is sent, allowing for multiple requests and responses to be sent over the same connection.
+
+In order to handle persistent connections, all requests and responses must include a `Content-Length` header. This header specifies the length of the message body in (bytes). The `Content-Length` header is used to determine when the message body has been fully received. If there is no message body following the headers, the `Content-Length` header will be set to 0.
+
+This implies that HTTP packets have an unknown length; as such, it is difficult to parse them all-at-once, as you do not know how much of a buffer to allocate to store the data. To deal with this, you should parse HTTP packets byte-by-byte until you reach the end of the HTTP header. This will be demarcated by the four-byte sequence `\r\n\r\n`. Once you read this sequence, you can use the `Content-Length` header to figure out how much more data there is. Using something like `recv()` into a large fixed buffer may fail in case there are multiple requests awaiting to be read. 
+
+Additionally, when parsing headers, make sure that you parse them in a case **in**sensitive way. This is the correct way to parse headers per the RFC, and this will probably end up getting tested by virtue of different browsers sending headers in different cases. This means that `Content-Length` and `ConTEnT-lEngTh` should be treated as the same header, for instance.
+
+### Calculating Throughput
+
+Your proxy measures the the throughput between each client and itself to determine the bitrate on a per-client basis. Your proxy should estimate each stream's throughput once per video segment. Because sockets hide the underlying network details, we rely on the client to send application level messages indicating when it started and stopped finishing receiving each segment. 
+
+Throughput must be calculated independently on a per-client basis. To help you uniquely identify a client, each segment-related request from a client will include a `X-489-UUID` header in the HTTP headers. This is the **only** piece of information that you should use to disambiguate clients. As mentioned earlier, multiple client sockets may originate from the same client. Although not all requests will have this header, the following requests are guaranteed to contain it:
+- GET requests for a video segment
+- POST requests to `/on-fragment-received`
+
+The throughput calculation is a much simpler one than in Project 1; we ignore any propagation delay, and simply calculate: 
+
+$$\text{Throughput} = \frac{\text{Data Size}}{\text{Elapsed Time}}$$ 
+
+As mentioned earlier, throughput should be updated whenever a POST request for the endpoint `/on-fragment-received` arrives. Your proxy should **not** forward these requests to the video server, and instead should simply respond with a HTTP `200 OK` status code. The `/on-fragment-received` request will include the following headers (among others):
+
+```
+x-489-uuid: db861416-d7c5-49f1-9803-519364dd2b3b
+x-fragment-size: 344912				// in bytes
+x-timestamp-start: 1738472727213	// in milliseconds since Unix epoch
+x-timestamp-end: 1738472728625		// in milliseconds since Unix epoch
+```
+
+These can be used to estimate the throughput for a single segment. To smooth your overall throughput estimation while adapting to changing network conditions, you should use an exponentially-weighted moving average (EWMA). Every time you make a new measurement (for a new video segment), update your current throughput estimate as follows:
+
+$$T_\text{cur} = \alpha * T_\text{new} + (1 - \alpha) * T_\text{cur}$$
+
+The constant $0 \leq \alpha ≤ 1$ controls the tradeoff between a smooth throughput estimate (`alpha` closer to 0) and one that reacts quickly to changes (`alpha` closer to 1). You will control `alpha` via a command line argument. **When calculating the throughput for a client, initialize `T_cur` to zero for the first update**.
 
 ### Choosing a Bitrate
-
 Once your proxy has calculated the connection's current throughput, it should select the highest offered bitrate the connection can support. For this project, we say a connection can support a bitrate if the average throughput is at least 1.5 times the bitrate. For example, before your proxy should request chunks encoded at 1000 Kbps, its current throughput estimate should be at least 1500 Kbps (1.5 Mbps).
 
-Your proxy should learn which bitrates are available for a given video by parsing the manifest file (the ".mpd" initially requested at the beginning of the stream). The manifest is encoded in XML; each encoding of the video is described by a `<media>` element, whose bitrate attribute you should find.
+As described earlier, your proxy will replace each video segment request with a request for the same segment at the selected bitrate (in Kbps) by modifying the HTTP request’s `Request-URI`. For instance, a client may request 
 
-Your proxy will replace each chunk request with a request for the same chunk at the selected bitrate (in Kbps) by modifying the HTTP request’s `Request-URI`. Video chunk URIs are structured as follows:
+`/videos/tears-of-steel/video/vid-500-seg-2.m4s`
 
-`/path/to/video/vid-<bitrate>-seg-<num>.m4s`
+If your estimated average throughput at this point is, say, 1300 Kbps, you should replace the URI with
 
-For example, suppose the player requests chunk 2 of the video `tears-of-steel.mp4` at 500 Kbps:
+`/videos/tears-of-steel/video/vid-800-seg-2.m4s`
 
-`/path/to/video/vid-500-seg-2.m4s`
+This is because the highest bitrate the video is available at that is lower than 1300 / 1.5 = 866 Kbps is 800 Kbps. If none of the available bitrates satisfy your current throughput estimate, you should default to selecting the lowest one. 
 
-To switch to a higher bitrate, e.g., 1000 Kbps, the proxy should modify the URI like this:
+### Design Considerations
+These are included in other places, but bear repeating here:
 
-`/path/to/video/vid-1000-seg-2.m4s`
+* You should have exactly one TCP connection between the proxy and a videoserver for every TCP connection between a client and the proxy. When a client closes a connection, your proxy should close the corresponding connecton to the videoserver. 
+* Your proxy **should** store available bitrates for each video somewhere that persists across connections. You can uniquely identify a video by the path to its `.mpd` file. In other words, only the first-ever request for the manifest file of a particular video should trigger a request for the regular manifest file AND the `no-list` manifest file. All subsequent requests should only lead to a request for the `no-list` file. 
+* Your proxy **should not** perform any other caching. All client requests (except POST requests to `/on-fragment-received`) should always lead to a corresponding request to the videoserver. 
+* For throughput calculation, you should uniquely identify a client by the `X-489-UUID` header within the GET request. This is because, for optimization, web browsers may open up several TCP connections for a single tab. This UUID should be the ONLY piece of data that you use to separate throughput estimates. Note that, although not all requests will have this header, any GET requests for a video segment will. 
 
-> **IMPORTANT:** When the video player requests `tears-of-steel.mpd`, you should instead return `tears-of-steel-no-list.mpd` to the video player. This file does not list the available bitrates, preventing the video player from attempting its own bitrate adaptation. Your proxy should, however, fetch `tears_-of-steel.mpd` for itself (i.e., don’t return it to the client) so you can parse the list of available encodings as described above. Your proxy should keep this list of available bitrates for each video in a global container (not on a connection by connection basis).
+### Logging 
+`miProxy` should use `spdlog` to print certain logs to the command line. For convenience, we've copy-pasted what these logs should look like below:
+#### When `miProxy` is ready and listening for connections:
+```cpp
+spdlog::info("miProxy started");
+```
+#### When a new socket connects:
+```cpp
+spdlog::info("New client socket connected with {}:{} on sockfd {}", client_ip, client_port, sockfd); 
+```
+The client_ip should be a string like `127.0.0.1`. The client port should be the port being used by the client on the client's machine. The sockfd should be the socket returned by `accept()` in `miProxy`. 
+
+#### When a client socket disconnects:
+```cpp
+spdlog::info("Client socket sockfd {} disconnected", sockfd); 
+```
+#### When a video manifest file request occurs:
+```cpp
+spdlog::info("Manifest requested by {} forwarded to {}:{} for {}", client_uuid, videoserver_ip, videoserver_port, chunkname); 
+```
+For instance, `Manifest requested by 880e8e87-d503-43a1-ba6e-1fc06da4aaa2 forwarded to 127.0.0.1:8000 for /videos/tears-of-steel/vid-no-list.mpd`. 
+
+#### When a video segment (.m4s) file request/response occurs:
+```cpp
+spdlog::info("Segment requested by {} forwarded to {}:{} as {} at bitrate {} Kbps", client_uuid, videoserver_ip, videoserver_port, chunkname, bitrate); 
+```
+
+#### When a POST request to `/on-fragment-received` occurs:
+```cpp
+spdlog::info("Client {} finished receiving a segment of size {} bytes in {} ms. Throughput: {} Kbps. Avg Throughput: {} Kbps", client_uuid, segment_size, segment_duration, tput, avg_tput); 
+```
+
+This log should be printed **after** the client makes the `POST` request to `/on-fragment-received-end`.
+
+* `client_ip` IP address of the socket issuing the request to the proxy.
+* `client_port` Port of the socket issuing the request to the proxy.
+* `client_uuid` The UUID of the client that is making the request.
+* `videoserver_ip` IP address of the videoserver to which the request was forwarded. 
+* `videoserver_port` Port of the videoserver to which the request was forwarded. 
+* `chunkname` The name of the file your proxy requested from the web server (that is, the modified file name in the modified HTTP GET message).
+* `bitrate` The bitrate requested by your proxy for that segment. This should be an integer number. 
+* `segment_size` An integer representing the size of a segment in bytes. 
+* `segment_duration` An integer representing the number of milliseconds it took to download a segment from the proxy to the client. 
+* `tput` The throughput you measured for the current chunk in Kbps (rounded down to an integer). 
+* `avg_tput` Your current EWMA throughput estimate in Kbps (rounded down to an integer). 
+
+These are **the only logs** you should print at the info level. You may use the error and debug levels freely to print additional information. 
 
 ### Running `miProxy`
-To operate `miProxy`, it should be invoked in one of two ways
+To operate `miProxy`, it should be invoked in one of two ways:
 
-**Method 1** - No DNS `nameserver` functionality, hard coded web server IP:
+#### Method 1: No load balancing with a single video server. 
 
 This mode of operation will be for testing your proxy without a working DNS server from part 2.
 
-`./miProxy --nodns <listen-port> <www-ip> <alpha> <log>`
+```
+./miProxy -l 9000 -h 127.0.0.1 -p 8000 -a 0.5 
+```
 
-* `--nodns` This flag indicates the proxy won't use DNS to get the web server IP.
-* `listen-port` The TCP port your proxy should listen on for accepting connections from your browser.
-* `www-ip` Argument specifying the IP address of the web server from which the proxy should request video chunks. Again, this web server is reachable at port TCP port `80`.
-* `alpha` A float in the range [0, 1]. Uses this as the coefficient in your EWMA throughput estimate.
-* `log` The file path to which you should log the messages as described below.
+* `-l | --listen-port`: The TCP port your proxy should listen on for accepting connections from your browser.
+* `-h | --hostname`: Argument specifying the IP address of the video server from which the proxy should request video chunks. 
+* `-p | --port`: Argument specifying the port of the video server at the IP address described by `hostname`. 
+* `-a | --alpha`: A float in the range [0, 1]. Uses this as the coefficient in your EWMA throughput estimate.
 
-**Method 2** - Full and final functionality (after part 2 is implemented):
+#### Method 2: Load balancing functionality
 
-In this mode of operation your proxy should obtain the web server's IP address by querying your DNS server for the name `video.cse.umich.edu`.
+In this mode of operation your proxy should obtain a video server IP for each new client connection by sending a request to the load balancer. 
 
-`./miProxy --dns <listen-port> <dns-ip> <dns-port> <alpha> <log>`
+```
+./miProxy -b -l 9000 -h 127.0.0.1 -p 8000 -a 0.5 
+```
+* `-b | --balance`: The presence of this flag indicates that load balancing should occur. 
+* `-l | --listen-port`: The TCP port your proxy should listen on for accepting connections from your browser.
+* `-h | --hostname`: Argument specifying the IP address of the **load balancer**. 
+* `-p | --port`: Argument specifying the port of the load balancer at the IP address described by `hostname`. 
+* `-a | --alpha`: A float in the range [0, 1]. Uses this as the coefficient in your EWMA throughput estimate.
 
-* `--dns` This flag indicates the proxy will use DNS to obtain the web server IP.
-* `listen-port` The TCP port your proxy should listen on for accepting connections from your browser.
-* `dns-ip` IP address of the DNS server.
-* `dns-port` Port number DNS server listens on.
-* `alpha` A float in the range [0, 1]. Uses this as the coefficient in your EWMA throughput estimate.
-* `log` The file path to which you should log the messages as described below.
+Note that the interpretation of the `hostname` and `port` arguments has changed to be the hostname and port of the load balancer rather than the video server. 
+To test in this mode, you should first spin up a videoserver, then the load balancer, then the miproxy, and finally, a browser. 
 
-> *Note: for simplicity, arguments will appear exactly as shown above (for both modes) during testing and grading. Error handling with the arguments is not explicitly tested but is highly recommended. At least printing the correct usage if something went wrong is worthwhile.*
+#### Error checking
 
-> *Also note: we are using our own implementation of DNS on top of TCP, not UDP.*
-
-### miProxy Logging
-`miProxy` must create a log of its activity in a very particular format. If the log file, specified via a command line argument, already exists, `miProxy` overwrites the log. *After each chunk-file response from the web server*, it should append the following line to the log:
-
-`<browser-ip> <chunkname> <server-ip> <duration> <tput> <avg-tput> <bitrate>`
-
-* `broswer-ip` IP address of the browser issuing the request to the proxy.
-* `chunkname` The name of the file your proxy requested from the web server (that is, the modified file name in the modified HTTP GET message).
-* `server-ip` The IP address of the server to which the proxy forwarded this request.
-* `duration` A floating point number representing the number of seconds it took to download this chunk from the web server to the proxy.
-* `tput` The throughput you measured for the current chunk in Kbps.
-* `avg-tput` Your current EWMA throughput estimate in Kbps.
-* `bitrate` The bitrate your proxy requested for this chunk in Kbps.
+You should exit with a non-zero error code (and print a helpful message on the command-line) if any of the following occur:
+* Any of the four required arguments are not specified
+* Either of the ports are not in the range [1024, 65535]
+* The alpha value is not in the range [0, 1]
 
 ### Testing
-To play a video through your proxy, you launch an instance of the web server, launch Chrome, and point the browser on the URL `http://<proxy_ip_addr>:<listen-port>/index.html`.
+To play a video through your proxy, you launch an instance of the video server, launch a web browser, and point the browser on the URL `http://<proxy_ip_addr>:<listen-port>/index.html`.
 
-### Tips 
-#### Miscellaneous 
-- You can copy the mininet python script from p1 and use it directly in this project. 
-- `miProxy` should **run forever**, unlike server in p1 which closes after sending ACK
-- You should have 1 sockfd listening incoming connections and multiple other sockfds for all connected clients (1 each)
-- Be careful with char arrays in DNS structs. They have fixed lengths of 100 but usually the actual content is much shorter. Directly converting them into `string` can cause very weird issues. Take out the actual content before converting them into strings.
-- You **MUST** use different <host_num> for using `start_server.py` and different <profile> for `Chrome` 
+A good first step is ensuring that your proxy can simply forward requests in both directions between the client and web browser without making any modifications. Once you have that working, you can begin trying to modify the chunks. You can incrementally test your project in this order, making sure that you can accomplish all previous steps before moving onto the next:
 
-#### Testing 
-> 1. Accepting connections from **multiple clients** (think server in p1) 
-> 2. Be able to connect to one of the CDN web servers
-> 3. Forward HTTP requests from clients
-> 4. Wait and forward HTTP responses from CDNs
-> 5. Measure the throughput of each video segment
-> 6. Capture video manifest file HTTP requests, send a manifest request to web server, and send another request to return a no list manifest file to client 
-> 7. Capture video segment HTTP requests and modify the request according to measured throughputs 
-> 8. Be able to connect to name server and get DNS response 
-It is recommended to incrementally test your project in this order. Verify the previous step works before proceeding to the next.
+1. Accept connections from **multiple clients**
+2. Connect to one of the video servers
+3. Forward HTTP requests from clients
+4. Wait and forward HTTP responses from video servers
+5. Measure the throughput of each video segment
+6. Capture video manifest file HTTP requests, send a manifest request to web server, and send another request to return a no list manifest file to client 
+7. Capture video segment HTTP requests and modify the request according to measured throughputs 
+8. Be able to connect to the load balacner and parse a response
 
 When testing `miProxy` as a whole, you should test it under these scenarios progressively: 
-1. No DNS, single client
-2. No DNS, multiple clients 
-3. DNS, single client
-4. DNS, multiple clients
 
-#### Design 
-This project can be very overwhelming without a thoughtful class design choice. 
-Some design choices we recommend (not required) are: 
-- `get_server_ip()`: This function returns a fixed value on `--nodns`, and queries nameserver on `--dns`
-- `get_request_type()`: This function returns the type of the client's request. This can be  1. Video Manifest Request  2. Video Segment Request  3. Other requests. You should handle these 3 types of requests differently.
-- `handle_new_connection()`: This function handles new connection from the listen sockfd and add it to the existing connection fd set.
-- `handle_client_reqeust()`: This function handles new requests from existing connections.
+1. No load balancer, single client
+2. No load balancer, multiple clients 
+3. Load balancer, single client
+4. Load balancer, multiple clients
 
+#### Modifying Bandwidth
 
-<a name="part2"></a>
-## Part 2: DNS Load Balancing
+You will want to test your proxy with different bandwidths to ensure that it is correctly selecting the appropriate bitrate.
+
+Browsers including Google Chrome and Firefox provide tools to throttle network speeds. In Chrome, you can access this by opening the developer tools (Right Click --> Inspect Element) and clicking on the Network tab. Here, you will see a dropdown menu that allows you to throttle network speeds.
+
+<img src="img/throttling-1.png" title="Network Throttle in Chrome" alt="" height=300/>
+<img src="img/throttling-2.png" title="Network Throttle in Chrome" alt="" height=300/>
+
+Firefox has equivalent functionality in the Network tab of the developer tools. You should set up several throttling profiles; note that Chrome allows for each tab to use different throttling conditions. Your throttlers should all have a latency of 0. **Remember to turn off throttling when you pause working on this project in order to not affect your normal web browsing.**
+
+### Helpful Tips (Read these for your own sake!)
+
+- **Please** write a bare-bones HTTP parser. There are a lot of headers that you will need to access, and I guarantee you that you will have some small error that will be a nightmare to debug if you try to do this in a less structured way.
+	- It's helpful to have a class that represents an HTTP request, and a class that represents an HTTP response. It's nice to have them share methods, such as one that parses header fields into a easy-to-access map.
+- Use `std::stoi` and `std::stoll` instead of `atoi` and `atol`. The former will throw exceptions if the string is not a valid number, while the latter will not. There is almost always one team that uses the latter without explicit error checking and ends up with some weird bug. Save yourself the headache.
+- Encapsulation, encapsulation, encapsulation. You will have a lot of state that you need to keep track of. If you try to do this all with a single class (or even worse, all in `main`), you will be very unhappy. Make lots of functions to encapsulate different parts of the proxy.
+
+## Part 2: Load Balancer
 
 To spread the load of serving videos among a group of servers, most CDNs perform some kind of load balancing. A common technique is to configure the CDN's authoritative DNS server to resolve a single domain name to one out of a set of IP addresses belonging to replicated content servers. The DNS server can use various strategies to spread the load, e.g., round-robin, shortest geographic distance, or current server load (which requires servers to periodically report their statuses to the DNS server). 
 
-In this part, you will write a simple DNS server that implements load balancing in two different ways: round-robin and geographic distance. 
+In this part, you will write a simple load balancing server, `loadBalancer`, that implements load balancing in two different ways: round-robin and geographic distance. As mentioned earlier, we will not implement a DNS server in order to run videoservers locally, as your load balancer will need to specify both an IP address and a port. 
 
-### Message Format for Our DNS Implemetation
-In order for your proxy to be able to query your DNS server, you must also write an accompanying DNS resolution library. The two pieces should communicate using the DNS classes we provide (`DNSHeader.h`, `DNSQuestion.h`, and `DNSRecord.h`). You can read more about what each of the fields in these classes represents [here](https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1). To make your life easier:
+### Protocol 
+The protocol used by the load balancer is defined in `cpp/src/common/loadBalancerProtocol.h`. `miProxy` should send a `LoadBalancerRequest`, and the load balancer should respond with a `LoadBalancerResponse`. 
 
-* `AA` Set this to 0 in requests, 1 in responses.
-
-* `RD` Set this to 0 in all messages.
-
-* `RA` Set this to 0 in all messages.
-
-* `Z` Set this to 0 in all messages.
-
-* `NSCOUNT` Set this to 0 in all messages.
-
-* `ARCOUNT` Set this to 0 in all messages.
-
-* `QTYPE` Set this to 1 in all requests (asking for an A record).
-
-* `QCLASS` Set this to 1 in all requests (asking for an IP address).
-
-* `TYPE` Set this to 1 in all responses (returning an A record).
-
-* `CLASS` Set this to 1 in all responses (returning an IP address).
-
-* `TTL` Set this to 0 in all responses (no caching).
-
-We are also providing encoding and decoding functions to serialize and deserialize your DNS query and response. Be sure to use the functions we provide so that your DNS server can be properly tested by autograder. In our implementation of DNS, the query consists of a DNS header and a question, and the response consists of a DNS header and a record.
-
-**There are some slight nuances in the format of our DNS messages**. The main difference between what we do and what the RFC specifies is that the response should contain header + question + record, whereas our response is only header + record. Also, the size of each **encoded** object (represented as a 4-byte integer) is sent before sending the contents of the object. The overall procedure is outlined below:
-
-1. `miProxy` sends integer designating the size of DNS header -> `miProxy` sends DNS header via encode() -> `miProxy` sends integer designating the size of DNS Question -> `miProxy` sends DNS Question via encode()
-
-2. `nameserver` recvs() integer designating size of DNS Header -> `nameserver` recvs() DNS header via decode() -> `nameserver` recvs() integer designating size of DNS Question -> `nameserver` recvs() DNS Question via decode()
-
-3. `nameserver` sends integer designating size of DNS Header -> `nameserver` sends DNS Header via encode() -> `nameserver` sends integer designating size of DNS Record -> `nameserver` sends DNS Record via encode()
-
-4. `miProxy` recvs() integer designating size of DNS Header -> `miProxy` recvs() DNS header via decode() -> `miProxy` recvs() integer designating size of DNS Record -> `miProxy` recvs() DNS Record via decode()
-
-**IMPORTANT: Remember to use `htonl` and `ntohl` when sending/receiving integers over the network!**
+Remember to use byte order conversion functions (i.e. `ntohl`, `htonl`, `ntohs`, `htons`) when sending/receiving integers over the network! The port and request ID are both interpreted as integers; the IP address is not. Please see Discussion 1 materials for why these are important. 
 
 ### Round-Robin Load Balancer
-One of the ways you will implement `nameserver` is as a simple round-robin based DNS load balancer. It should take as input a list of video server IP addresses on the command line; it responds to each request to resolve the name `video.cse.umich.edu` by returning the next IP address in the list, cycling back to the beginning when the list is exhausted.
+One of the ways you will implement the load balancer is as a simple round-robin load balancer. It will take a file containing a list of videoserver IP addresses and ports on the command line. Beginning at the start of the list, the load balancer will return the next IP address in the list for each subsequent request, looping back to the top of the list when it reaches the end. 
 
-`nameserver` will bind to an IP address and port specified as command line arguments. It responds **only** to requests for `video.cse.umich.edu`; any other requests should generate a response with `RCODE` 3.
-
-Example text file format in `sample_round_robin.txt`:
+An example of the input file format is in `sample_round_robin.txt`:
 ```
-10.0.0.1
-10.0.0.2
-10.0.0.3
+NUM_SERVERS: 3
+127.0.0.1 8000  
+127.0.0.1 8001
+127.0.0.1 8002
 ```
-
-> Hint: You should return `10.0.0.1` if you last response was `10.0.0.3` here. What technique can you use for accessing the list in a **circular** manner? 
 
 ### Geographic Distance Load Balancer
-Next you’ll make your DNS server somewhat more sophisticated. Your load balancer must return the closest video server to the client based on the proxy’s IP address. In the real world, this would be done by querying a database mapping IP prefixes to geographic locations. For your implementation, however, you will be given information in a text file about the entire state of the network, and your server will have to return to a given client its closest geographic server.
+Next you’ll make your load balancer somewhat more sophisticated. Your load balancer must return the closest video server to the client based on the client IP address included in the request. In the real world, this would be done by querying a database mapping IP prefixes to geographic locations. For your implementation, however, you will be given information in a text file about the entire state of the network, and your server will have to return the closest geographic server to a client. 
+
+> Note: You may question how useful it is to return a closest server when all requests are going through the proxy anyway. You would be absolutely right about this, but you can easily imagine a scenario where the load balancer is actually a DNS server, and the bitrate adaptation behavior of the proxy occurs in the browser itself. 
 
 The text file will be represented in the following way:
 ```
 NUM_NODES: <number of hosts and switches in the network>
 <host_id> <CLIENT|SWITCH|SERVER> <IP address|NO_IP>
-(repeats NUM_NODES - 1 times)
+[Repeats for a total of NUM_NODES rows, including the one above this]
 NUM_LINKS: <number of links in the network>
 <origin_id> <destination_id> <cost>
-(repeats NUM_LINKS - 1 times)
+[Repeats for a total of NUM_LINKS rows, including the one above this]
 ```
 
-<img src="github_assets/link-cost.PNG" title="Video CDN in the wild" alt="" width="400" height="155"/>
+<img src="img/link-cost.PNG" title="Video CDN in the wild" alt="" width="400" height="155"/>
 
 As an example, the network shown above will have the following text file, `sample_geography.txt`:
 ```
@@ -363,226 +502,131 @@ NUM_LINKS: 5
 3 4 6
 3 5 1
 ```
-> Hint: This is graph structure. Recall from 281, what algorithm can you use for finding the **shortest path** from client to any server? 
 
-To operate `nameserver`, it should be invoked as follows:
+Note that geographic load balancing does not include port numbers. You should assume the videoserver is running on port 8000 on the server IPs when responding as a geographic load balancer. 
 
-`./nameserver [--geo|--rr] <port> <servers> <log>`
+#### Edge Cases
+* If two servers are equidistant from a client, you should always return the earlier one (i.e. the lower ID). 
+* If no server is found that has a path to the given client, or a CLIENT_IP is passed that is not actually a valid client in the network, the load balancer should close the socket without responding. 
 
-* `--geo` This flag specifies that `nameserver` will operate in the geography/distance based load balancing scheme.
-* `--rr` This flag specifies that `nameserver` will operate in the round-robin based load balancing scheme.
-* `port` The port on which your server should listen.
-* `servers` A text file containing a list of IP addresses, one per line, belonging to content servers if `--rr` is specified. Otherwise, if `--geo` is specified, it will be a text file describing the network topology as explained above.
-* `log` The file path to which you should log the messages as described below.
+### Logging
+Your DNS server must log its activity in a specific format. Logs should be generated in the following cases:
 
-**Exactly one of `--rr` or `--geo` will be specified.**
+#### When the Load Balancer is ready and listening for connections:
+```cpp
+spdlog::info("Load balancer started on port {}", port);
+```
 
-> *Note: for simplicity, arguments will appear exactly as shown above (for both modes) during testing and grading. Error handling with the arguments is not explicitly tested but is highly recommended. At the very least, printing the correct usage if something went wrong is worthwhile.*
+#### After a new request arrives 
+```cpp
+spdlog::info("Received request for client {} with request ID {}", client_ip, request_id);
+```
+Remember that the request ID should be in **host order** when you print it. 
 
-### nameserver Logging
-Your DNS server must log its activity in a specific format. If the log specified by the user already exists, your DNS server overwrites the log. *After each* valid DNS query it services, it should append the following line to the log:
+#### After a successful response is sent
+```cpp
+spdlog::info("Responded to request ID {} with server {}:{}", request_id, videoserver_ip, videoserver_port);
+```
+Remember that the request ID and videoserver port should be in **host order** when you print it. 
 
-`<client-ip> <query-name> <response-ip>`
+#### After being unable to fulfill a client request (e.g. no server found)
+```cpp
+spdlog::info("Failed to fulfill request ID {}", request_id);
+```
+Remember that the request ID should be in **host order** when you print it. 
 
-* `client-ip` The IP address of the client who sent the query.
-* `query-name` The hostname the client is trying to resolve.
-* `response-ip` The IP address you return in response.
+These are the **only logs** you should print at the `info` level. Feel free to use the `debug` and `error` levels for other logging. 
 
-### queryDNS utility
- `queryDNS` (in the starter_code directory) sends a DNS query to `nameserver` (just like a `miProxy` does), and outputs the reponse from DNS server. So you can test your `nameserver` using `queryDNS` without `miProxy`.
+### Running `loadBalancer`
 
- The autograder uses queryDNS for the `nameserver` only test cases, so make sure your code is compatible.
+LoadBalancer should run with the following arguments:
+```
+loadBalancer [OPTION...]
 
- The command line to use `queryDNS` is:
- ```
-$ <path to the binary>/queryDNS <IP of nameserver> <port of nameserver>
- ```
+-p, --port arg     Port of the load balancer
+-g, --geo          Run in geo mode
+-r, --rr           Run in round-robin mode
+-s, --servers arg  Path to file containing server info
+```
 
- If everything goes well, you should get responses like `10.0.0.1`, `10.0.0.2` and `10.0.0.3`.
+For instance, you could run 
+```
+./build/bin/loadBalancer --rr -p 9000 -s sample_round_robin.txt
+```
 
-<a name="submission-instr"></a>
-## Submission Instructions
-Submission to the autograder will be done [here](https://g489.eecs.umich.edu/). You will have 3 submissions per day (once the autograder is released).
+Once again, we encourage you to use `cxxopts` for this. 
 
-To submit:
-1. Submit all the files that you are using in your code, including any starter code. All the files should be configured to work in a flat directory structure
-2. Submit a Makefile with two rules:
-    - make miProxy -> this should produce an executable called miProxxy
-    - make nameserver -> this should produce an executable called nameserver
+#### Error Checking
+You should terminate with a non-zero exit code if:
+* The specified port is not in the range [1024, 65535]
+* Both or neither of the `rr` and `geo` flags are specified. 
+* Any extra arguments are given. 
 
+### Testing with `queryLoadBalancer`
+To facilitate testing your load balancer without having implemented `miProxy`, we provide a `queryLoadBalancer` executable in the `util/` directory. This executable will run on the Ubuntu VM from P1 (and other Ubuntu systems). We have also provided executables for ARM Macs and Windows. 
 
-<a name="autograder"></a>
+```
+queryLoadBalancer [OPTION...]
+
+  -i, --ip arg        Client IP address to query
+  -h, --hostname arg  IP address of the Load Balancer
+  -p, --port arg      Port of the Load Balancer
+```
+This will send a load balancer query to the specified load balancing server in the same way that `miProxy` should and print the results.
+
 ## Autograder
-The autograder will be released roughly halfway through the assignment. You are encouraged to design tests by yourselves to fully test your proxy server and DNS server. You should *NEVER* rely on the autograder to debug your code. Clarifications on the autograder will be added in this section.
-
-
-## Instruction Sheet: Using the AWS AMI for Mininet with VNC and Starter Files
-
-This instruction sheet will guide you through the setup and use of the AWS AMI provided for your Mininet project. You will learn how to access the virtual machine using a VNC client, understand what VNC is, and work with the starter files provided. Follow each step carefully to ensure everything runs smoothly.
-
-
-
-### What is VNC?
-
-VNC (Virtual Network Computing) is a system that allows you to remotely control another computer’s desktop environment over a network. It transmits keyboard and mouse input from your local machine to a remote machine and displays the screen of the remote machine on your local machine. In this project, you will use VNC to access the graphical interface of your AWS AMI instance, so you can work with the provided tools, including Mininet.
-
-
-
-### Step 1: Launch the AWS AMI Instance
-Once you’ve launched the AWS AMI instance from your console, you will need to access its desktop environment using a VNC client.
-
-
-
-### Step 2: Launching the VNC Server
-
-1. **Connect to Your AWS Instance:**
-   First, SSH into your AWS instance. Open a terminal on your local machine and use the following SSH command to log in:
-
-   ```bash
-   ssh -i /path/to/your-key.pem username@your-aws-instance-public-ip
-   ```
-
-   - **`ssh`**: This command initiates a Secure Shell session.
-   - **`-i /path/to/your-key.pem`**: The `-i` flag specifies the private key to use for authentication.
-   - **`username@your-aws-instance-public-ip`**: Replace `username` with the username provided for the AMI and `your-aws-instance-public-ip` with the public IP of your AWS instance.
-
-2. **Start the VNC Server:**
-   Once connected to your AWS instance, start the VNC server by running:
-
-   ```bash
-   vncserver
-   ```
-
-   **Explanation**: The `vncserver` command launches the VNC server. When you run this command as a non-root user (i.e., without `sudo`), it creates a VNC session that runs on a specific display, typically `:1`, which corresponds to port 5901.
-
-   - The password to the VNC server will be set to **eecs489** by default.
-
-
-### Step 3: SSH Tunneling for VNC Access
-
-Since VNC uses port 5901 (by default for display `:1`), we will create an SSH tunnel to securely forward traffic from your local machine to this port on the AWS instance.
-
-1. **Create an SSH Tunnel:**
-
-   Run the following command in a new terminal window on your local machine:
-
-   ```bash
-   ssh -i /path/to/your-key.pem -L 5901:localhost:5901 username@your-aws-instance-public-ip
-   ```
-
-   **Explanation**:
-   - **`-L 5901:localhost:5901`**: This forwards port 5901 on your local machine to port 5901 on the AWS instance (where the VNC server is running).
-   - The `username` and `your-aws-instance-public-ip` should match what you used in Step 2.
-
-   **Expected Output**: After running the SSH tunnel command, you should see no errors and be connected to your AWS instance. It will appear similar to a regular SSH session.
-
-
-
-### Step 4: Accessing the VNC Server Using a VNC Client
-
-1. **Open Your VNC Client**:
-   Install and launch a VNC client such as **RealVNC** or **TigerVNC**. 
-   
-   Note: MacOS has a [native VNC client](https://support.apple.com/guide/remote-desktop/virtual-network-computing-access-and-control-apde0dd523e/mac). 
-
-2. **Connect to Your AWS Instance**:
-   In the VNC client, connect to `localhost:5901`.
-
-   - **`localhost`**: Refers to your local machine.
-   - **`:5901`**: Refers to the port where VNC traffic is being forwarded via the SSH tunnel.
-
-3. **Enter Your VNC Password**:
-   When prompted, enter the password you set when starting the VNC server (this will be **eecs489** by default.)
-
-
-### Step 5: Working with the Starter Files
-
-Once connected via VNC, you will find several starter files, including `chrome` and `webserver.py`. Below is an explanation of each file and how to work with them. 
-
-**NOTE: When testing your project, make sure to run these commands on Mininet hosts rather than directly as the user! ** 
-
-#### 1. Making `chrome` Executable
-
-The `chrome` file is an executable that needs to be made runnable before it can be used. Follow these steps:
-
-1. **Run `chmod +x` to Make `chrome` Executable:**
-
-   ```bash
-   chmod +x chrome
-   ```
-
-   **Explanation**:
-   - **`chmod +x chrome`**: The `chmod` command changes the permissions of the file. The `+x` flag makes the file executable, meaning it can be run as a program.
-   - Once this is done, you’ll be able to run `chrome` using `sudo` as shown in the next step.
-
-2. **Run `chrome` as `sudo`:**
-
-   ```bash
-   sudo ./chrome
-   ```
-
-   **Explanation**:
-   - **`sudo`**: This command runs the `chrome` executable with superuser (admin) privileges. Some programs may need elevated permissions to function correctly.
-   - **`./chrome`**: The `./` specifies that the program is located in the current directory.
-
-
-
-#### 2. Running the `webserver`
-
-Another file in your starter pack is `webserver.py`, a Python script that launches a web server using the Flask framework. This server serves files over a persistent connection.
-
-1. **Run the Web Server:**
-
-   First, run
-   
-   ```bash
-   chmod +x ./launch_webserver
-   ```
-
-   to make the webserver script executable.
-
-   Then,
-   
-   ```bash
-   ./launch_webserver
-   ```
-
-   **Explanation**:
-   - Once the server is running, it will listen on port 80 and serve files over HTTP.
-   - Make sure that the directory ```vod``` is in the same folder where you are running the webserver.
-
-   You can access the web server by navigating to `http://10.0.0.x/index.html` (where `x` is the host number) in the chrome web browser from the previous step.
-
-
-
-### Step 6: Summary of Commands
-
-- **SSH into AWS**: 
-  ```bash
-  ssh -i /path/to/your-key.pem username@your-aws-instance-public-ip
-  ```
-- **Start VNC Server**: 
-  ```bash
-  vncserver
-  ```
-- **Create SSH Tunnel**: 
-  ```bash
-  ssh -i /path/to/your-key.pem -L 5901:localhost:5901 username@your-aws-instance-public-ip
-  ```
-- **Make `chrome` Executable**:
-  ```bash
-  chmod +x chrome
-  ```
-- **Run `chrome` as `sudo`**: 
-  ```bash
-  sudo ./chrome
-  ```
-- **Run `webserver`**:
-  ```bash
-  ./launch_webserver
-  ```
-
-
-
+The autograder will be released within a week of the assignment being released. Each group will have a total of three submits per day. Furthermore, groups have a total of three late days to use across Assignments 2-4. 
+
+The Autograder is not a debugging tool. You can and should design tests to fully test your proxy server and DNS server. 
+
+As in Project 1, you will be submitting a tarball to the Autograder. You can create this tarball by running the following command:
+```bash
+$ bash <path-to-submit-script> <path-to-base-repo>
+```
+For instance, if your current working directory is the base of the repo, you could run 
+```bash
+$ bash util/submit.sh .
+```
+This will create a file called `submit.tar` containing the contents of your `cpp/` folder.  
+ 
 ## Acknowledgements
-This programming assignment is based on Peter Steenkiste's Project 3 from CMU CS 15-441: Computer Networks.
+This programming assignment is based on Peter Steenkiste's Project 3 from CMU CS 15-441: Computer Networks. It has been redesigned for the Winter 2025 semester by the EECS 489 Staff. 
+
+## Bonus: Converting Video Files to MPEG DASH
+We have provided two video files for you on the video server. Feel free to import your own video files and modify the videoserver to play them as well! This part explains how you can convert an `mp4` file into the MPEG DASH format. 
+
+To begin, suppose you have a `.mp4` file named `input.mp4`. 
+
+1. Download `ffmpeg` and run the following command once for each bitrate you would like to support. You can change the `scale` to the appropriate resolution, the `-b:v` value to the bitrate you would like to support, and the name of the output (e.g. `vid-500.mp4`) to fit the needed bitrate. 
+```bash
+$ ffmpeg -i input.mp4 -vf scale=512:214 -b:v 500k -c:v libx264 -g 48 -keyint_min 48 -force_key_frames "expr:gte(t,n_forced*2)" -sc_threshold 0 -bf 1 -r 24 -c:a aac -ar 48000 -ac 2 -f mp4 -profile:v main -level 3.1 -movflags +faststart vid-500.mp4
+```
+2. You should now have a few `.mp4 files`, each at a different resolution and with a different name. For instance:
+```
+vid-500.mp4
+vid-800.mp4
+vid-1100.mp4
+vid-1400.mp4
+```
+You can now convert each of these into fragmented `.mp4` files using `mp4fragment`. This command should be run once per `.mp4` file created from the last step. 
+```bash
+$ mp4fragment vid-500.mp4 vid-500-frag.mp4
+```
+3. Now that you have `vid-*-frag.mp4` files, you can use the [Bento4](https://www.bento4.com/downloads/) tool to convert it into the MPEG DASH format. Although the website is somewhat lacking in documentation, you should run the `mp4-dash` script, with a command that looks something like this:
+```
+python3 mp4-dash.py vid-500-frag.mp4 vid-800-frag.mp4 vid-1100-frag.mp4 vid-1400-frag.mp4
+```
+4. This will create a folder called `output` with the following structure:
+```
+playlist.mpd
+audio/
+	[various audio files, possibly in a subfolder]
+video/
+	1/
+		[init.mp4 and .m4s files for the first video]
+	2/ 
+		[init.mp4 and .m4s files for the second video]
+	3/
+		...
+```
+And you're done! You can move the folders around as you see fit; make sure you make corresponding changes in the `.mpd` file if you change the folder structure. Have fun!
