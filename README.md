@@ -109,8 +109,8 @@ The two parts of the project can each be tested on their own before the integrat
 We have provided a simple video server for you, implemented in the `videoserver/` directory. First, you will need to unzip some of the video files:
 ```bash
 $ cd videoserver/static/videos
-$ tar -xvzf michigan-hype-video.tar
-$ tar -xvzf tears-of-steel.tar
+$ tar -xvzf michigan-hype-video.tar.gz
+$ tar -xvzf tears-of-steel.tar.gz
 ```
 This should lead to two folders -- `michigan-hype-video` and `tears-of-steel` -- being created inside the `videos/` folder. 
 
