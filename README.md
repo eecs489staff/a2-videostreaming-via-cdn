@@ -88,7 +88,7 @@ The structure of the files is as follows:
 |   └── ...
 ```
 ### Your Code
-As in Project 1, we will be using CMake as our build system. The top-level CMake file is at `cpp/CMakeLists.txt`. There are also `CMakeLists.txt` files in every subdirectory. These files have been filled out for you. We encourage you to take a look and see how they work. You may need to modify them if the structure of your code changes. You **may not** use any external packages other than the ones we provide: `spdlog`, `cxxopts`, `pugixml`, and `re2`.
+As in Project 1, we will be using CMake as our build system. The top-level CMake file is at `cpp/CMakeLists.txt`. There are also `CMakeLists.txt` files in every subdirectory. These files have been filled out for you. We encourage you to take a look and see how they work. You may need to modify them if the structure of your code changes. You **may not** use any external packages other than the ones we provide: `spdlog`, `cxxopts`, `pugixml`, and `boost::regex`.
 
 We have also included a `common` folder with a few network utility functions (these are copied over from the Discussion 3 example) as well as the protocol definition for communicating with the load balancer. You can (and should!) add more network utility functions and other code that can be shared between `miProxy` and `loadBalancer` into the common folder. 
 
