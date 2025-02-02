@@ -2,8 +2,5 @@
 # You may need to comment some out temporarily if they aren't in working condition. 
 
 add_subdirectory(common)
-
 add_subdirectory(miProxy)
-add_subdirectory(queryLoadBalancer)
 add_subdirectory(loadBalancer)
-
