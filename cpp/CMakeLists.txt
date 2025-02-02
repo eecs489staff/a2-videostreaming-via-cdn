@@ -1,5 +1,5 @@
 
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.30)
 cmake_policy(SET CMP0167 NEW)
 project(eecs489-project2-wn25)
 
