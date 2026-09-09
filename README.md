@@ -4,7 +4,7 @@ latex: true
 ---
 # Assignment 2: Adaptive Video Streaming via CDN
 
-### Due: October 10th, 2025 @ 11:59 PM
+### Due: October 16th, 2026 @ 11:59 PM
 
 Video traffic dominates the Internet. In this project, you will explore how video content distribution networks (CDNs) work. In particular, you will implement (1) adaptive bitrate selection through an HTTP proxy server and (2) load balancing. 
 
@@ -28,7 +28,7 @@ This project has the following goals:
 ### Video CDNs in the Real World
 <img src="img/real-CDN.png" title="Video CDN in the wild" alt="" height=300/>
 
-The figure above depicts a high level view of what this system looks like in the real world. Clients trying to stream a video first issue a DNS query to resolve the service's domain name to an IP address for one of the CDN's video servers. The CDN's authoritative DNS server selects the “best” content server for each particular client based on
+The figure above depicts a high-level view of what this system looks like in the real world. Clients trying to stream a video first issue a DNS query to resolve the service's domain name to an IP address for one of the CDN's video servers. The CDN's authoritative DNS server selects the “best” content server for each particular client based on
 (1) the client's IP address (from which it learns the client's geographic location) and
 (2) current load on the content servers (which the servers periodically report to the DNS server).
 
@@ -61,7 +61,7 @@ In the real world, IP Addresses disambiguate machines. Typically, a given servic
 For the purposes of this project, as we want you to be able to run everything locally, we will instead distinguish different video servers by their (ip, port) tuple. For instance, you may have two video servers running on (localhost, 8000) and (localhost, 8001). We want to emphasize that this would not make much sense in the real world; you would probably use a DNS server for load balancing, which would point to several IPs where video servers are hosted, each using the same port for a specific service.
 
 ## Getting Started 
-This project has been adapted so that it can be run and tested on your own device, without any need for a virtual machine. Although this leads to a slightly less realism, we hope it makes development faster and easier. Feel free to use your VM from Project 1 to run your code in Mininet for the full experience. 
+This project has been adapted so that it can be run and tested on your own device, without any need for a virtual machine. Although this leads to slightly less realism, we hope it makes development faster and easier. Feel free to use your VM from Project 1 to run your code in Mininet for the full experience. 
 
 > Note: The only configuration that cannot be tested locally is running a geographic load balancer in conjunction with a load-balancing miProxy. This will have to occur on Mininet. However, you are able to locally test both (1) miProxy with a round-robin load balancer and (2) a geographic load balancer on its own. 
 
@@ -71,7 +71,6 @@ To get started, clone this Github repository. We are using `git-lfs` (Git Large 
 $ git lfs install
 $ git lfs pull
 ```
-> Note: See this Ed post if you have trouble getting LFS to work: https://edstem.org/us/courses/70734/discussion/6088482. 
 
 You can then create your own  **private** GitHub repository, and push these files to that repo. Your repository should be shared only with your group members, and should not be publicly accessible. **Making your solution code publicly accessible, even by accident, will be considered a violation of the Honor Code.** You can create a private repository through the GitHub website, and add it as a remote to the cloned repository with 
 ```bash
@@ -162,7 +161,7 @@ You can click on the linked pages to play the videos. The first one (Tears of St
 Note that you are currently directly accessing the video server; when testing this project, you will instead navigate to the `ip:port` of your running proxy, which will communicate with the video server for you. 
 
 ### Libraries
-As in Project 1, we expect you to use `cxxopts` for parsing command-line options, and `spdlog` for variable-level logging. We will require certain logs to be printed using `spdlog` from both the HTTP proxy and the load balancer in order to faciliate autograding and debugging. 
+As in Project 1, we expect you to use `cxxopts` for parsing command-line options, and `spdlog` for variable-level logging. We will require certain logs to be printed using `spdlog` from both the HTTP proxy and the load balancer in order to facilitate autograding and debugging. 
 
 We have also included `pugixml`, a [C++ XML-parsing library](https://pugixml.org/) and the `boost::regex` library in the CMake files. You do not have to use these libraries, but it will make parsing video manifest files and HTTP requests much easier. Documentation for these libraries is available online. 
 
@@ -192,7 +191,7 @@ You are to implement a simple HTTP proxy, `miProxy`. It accepts connections from
 4. Forward HTTP requests from clients to the appropriate video server
 5. Forward HTTP responses from the video server to the appropriate client
 6. Measure the throughput of each video segment to each client
-7. Capture video manifest file HTTP requests, returning the no-list manifest file to clients while reqeuesting the regular manifest file for itself
+7. Capture video manifest file HTTP requests, returning the no-list manifest file to clients while requesting the regular manifest file for itself
 8. Capture video segment HTTP requests and modify the request to have the appropriate bitrate
 
 You will implement two modes of miProxy: 
@@ -297,7 +296,7 @@ Additionally, when parsing headers, make sure that you parse them in a case **in
 
 ### Calculating Throughput
 
-Your proxy measures the the throughput between each client and itself to determine the bitrate on a per-client basis. Your proxy should estimate each stream's throughput once per video segment. Because sockets hide the underlying network details, we rely on the client to send application level messages indicating when it started and stopped finishing receiving each segment. 
+Your proxy measures the throughput between each client and itself to determine the bitrate on a per-client basis. Your proxy should estimate each stream's throughput once per video segment. Because sockets hide the underlying network details, we rely on the client to send application level messages indicating when it started and stopped finishing receiving each segment. 
 
 Throughput must be calculated independently on a per-client basis. To help you uniquely identify a client, each segment-related request from a client will include a `X-489-UUID` header in the HTTP headers. This is the **only** piece of information that you should use to disambiguate clients. As mentioned earlier, multiple client sockets may originate from the same client. Although not all requests will have this header, the following requests are guaranteed to contain it:
 - GET requests for a video manifest file
@@ -339,7 +338,7 @@ This is because the highest bitrate the video is available at that is lower than
 ### Design Considerations
 These are included in other places, but bear repeating here:
 
-* You should have exactly one TCP connection between the proxy and a videoserver for every TCP connection between a client and the proxy. When a client closes a connection, your proxy should close the corresponding connecton to the videoserver. 
+* You should have exactly one TCP connection between the proxy and a videoserver for every TCP connection between a client and the proxy. When a client closes a connection, your proxy should close the corresponding connection to the videoserver. 
 * Your proxy **should** store available bitrates for each video somewhere that persists across connections. You can uniquely identify a video by the path to its `.mpd` file. In other words, only the first-ever request for the manifest file of a particular video should trigger a request for the regular manifest file AND the `no-list` manifest file. All subsequent requests should only lead to a request for the `no-list` file. 
 * Your proxy **should not** perform any other caching. All client requests (except POST requests to `/on-fragment-received`) should always lead to a corresponding request to the videoserver. 
 * For throughput calculation, you should uniquely identify a client by the `X-489-UUID` header within the GET request. This is because, for optimization, web browsers may open up several TCP connections for a single tab. This UUID should be the ONLY piece of data that you use to separate throughput estimates. Note that, although not all requests will have this header, any GET requests for a video segment will. 
@@ -466,7 +465,7 @@ Firefox has equivalent functionality in the Network tab of the developer tools. 
 ### Helpful Tips (Read these for your own sake!)
 
 - **Please** write a bare-bones HTTP parser. There are a lot of headers that you will need to access, and I guarantee you that you will have some small error that will be a nightmare to debug if you try to do this in a less structured way.
-	- It's helpful to have a class that represents an HTTP request, and a class that represents an HTTP response. It's nice to have them share methods, such as one that parses header fields into a easy-to-access map.
+	- It's helpful to have a class that represents an HTTP request, and a class that represents an HTTP response. It's nice to have them share methods, such as one that parses header fields into an easy-to-access map.
 - Use `std::stoi` and `std::stoll` instead of `atoi` and `atol`. The former will throw exceptions if the string is not a valid number, while the latter will not. There is almost always one team that uses the latter without explicit error checking and ends up with some weird bug. Save yourself the headache.
 - Encapsulation, encapsulation, encapsulation. You will have a lot of state that you need to keep track of. If you try to do this all with a single class (or even worse, all in `main`), you will be very unhappy. Make lots of functions to encapsulate different parts of the proxy.
 
@@ -615,7 +614,7 @@ $ bash util/submit.sh .
 This will create a file called `submit.tar` containing the contents of your `cpp/` folder.  
  
 ## Acknowledgements
-This programming assignment is based on Peter Steenkiste's Project 3 from CMU CS 15-441: Computer Networks. It has been redesigned for the Winter 2025 semester by the EECS 489 Staff. 
+This programming assignment is based on Peter Steenkiste's Project 3 from CMU CS 15-441: Computer Networks. It has been redesigned for the Fall 2026 semester by the EECS 489 Staff. 
 
 ## Bonus: Converting Video Files to MPEG DASH
 We have provided two video files for you on the video server. Feel free to import your own video files and modify the videoserver to play them as well! This part explains how you can convert an `mp4` file into the MPEG DASH format. 
@@ -626,7 +625,7 @@ To begin, suppose you have a `.mp4` file named `input.mp4`.
 ```bash
 $ ffmpeg -i input.mp4 -vf scale=512:214 -b:v 500k -c:v libx264 -g 48 -keyint_min 48 -force_key_frames "expr:gte(t,n_forced*2)" -sc_threshold 0 -bf 1 -r 24 -c:a aac -ar 48000 -ac 2 -f mp4 -profile:v main -level 3.1 -movflags +faststart vid-500.mp4
 ```
-2. You should now have a few `.mp4 files`, each at a different resolution and with a different name. For instance:
+2. You should now have a few `.mp4` files, each at a different resolution and with a different name. For instance:
 ```
 vid-500.mp4
 vid-800.mp4
